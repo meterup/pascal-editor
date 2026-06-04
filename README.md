@@ -382,14 +382,19 @@ turbo build --filter=@pascal-app/core
 
 ### Publishing Packages
 
-```bash
-# Build packages
-turbo build --filter=@pascal-app/core --filter=@pascal-app/viewer
+Releases are managed with [Changesets](https://changesets.dev). Publishing is automated — you don't run `npm publish` by hand.
 
-# Publish to npm
-npm publish --workspace=@pascal-app/core --access public
-npm publish --workspace=@pascal-app/viewer --access public
-```
+1. In any PR that changes a published package, add a changeset describing the change:
+
+   ```bash
+   bun changeset
+   ```
+
+   Pick the affected packages and bump type (patch/minor/major); commit the generated file in `.changeset/`.
+
+2. When the PR merges to `main`, the `Release` workflow opens (or updates) a **Version Packages** PR that applies the pending changesets — bumping versions and writing changelogs.
+
+3. Merging that **Version Packages** PR publishes the affected packages to npm and tags the release.
 
 ---
 

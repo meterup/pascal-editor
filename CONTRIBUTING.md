@@ -49,8 +49,9 @@ A key rule: **`packages/viewer` must never import from `apps/editor`**. The view
 1. **Fork the repo** and create a branch from `main`
 2. **Make your changes** and test locally with `bun dev`
 3. **Run `bun check`** to make sure linting passes
-4. **Open a PR** with a clear description of what changed and why
-5. **Link related issues** if applicable (e.g., "Fixes #42")
+4. **Add a changeset** if you changed a published `@pascal-app/*` package — run `bun changeset`, pick the affected packages and bump type, and commit the generated file. This drives the automated release; see [Publishing Packages](README.md#publishing-packages).
+5. **Open a PR** with a clear description of what changed and why
+6. **Link related issues** if applicable (e.g., "Fixes #42")
 
 ### PR tips
 
