@@ -23,18 +23,18 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@pascal-app/capture-protocol": "^1.0.0-beta.4",
-    "@pascal-app/core": "^1.0.0-beta.4",
-    "@pascal-app/viewer": "^1.0.0-beta.4",
+    "@pascal-app/capture-protocol": "workspace:^",
+    "@pascal-app/core": "workspace:^",
+    "@pascal-app/viewer": "workspace:^",
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
     "react": "^18 || ^19",
     "three": "^0.185"
   },
   "devDependencies": {
-    "@pascal-app/capture-protocol": "^1.0.0-beta.4",
-    "@pascal-app/core": "^1.0.0-beta.4",
-    "@pascal-app/viewer": "^1.0.0-beta.4",
+    "@pascal-app/capture-protocol": "workspace:^",
+    "@pascal-app/core": "workspace:^",
+    "@pascal-app/viewer": "workspace:^",
     "@pascal/typescript-config": "*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
