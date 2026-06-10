@@ -89,15 +89,21 @@ for (const dir of readdirSync("packages")) {
     console.log(`→ Publishing ${tag}`);
     await $`npm publish ${packed} --ignore-scripts --registry ${REGISTRY}`;
     newTags.push(tag);
-    console.log(`New tag: ${tag}`); // changesets/action parses this for the GitHub Release
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
 }
 
-// Tag the published versions under the fork scope so GitHub Releases attach to
-// real refs named after what was actually published (not the @pascal-app source).
+// Tag and release under the fork scope. We do NOT print changesets' "New tag:"
+// lines and let changesets/action create the releases: the action matches each
+// printed name against a workspace package, which never matches our rescoped
+// names (the source stays @pascal-app/*), so it errors. Instead we own the tag
+// + release here, named after what was actually published. Best-effort so a
+// re-run (tag/release already exists) doesn't fail the job.
 if (IN_CI && newTags.length > 0) {
   for (const tag of newTags) await $`git tag ${tag}`.nothrow();
   await $`git push origin ${newTags}`.nothrow();
+  for (const tag of newTags) {
+    await $`gh release create ${tag} --title ${tag} --notes ${"Published to GitHub Packages."}`.nothrow();
+  }
 }
