@@ -56,15 +56,17 @@ const rewriteScope = (dir: string): void => {
 /**
  * Point the packed package's repository.url at the publishing fork so GitHub
  * Packages links the package to this repo. The source field still points at
- * upstream (pascalorg/editor); only the published artifact is changed.
+ * upstream (pascalorg/editor); only the published artifact is changed. Creates
+ * the field when a package omits it (e.g. editor), so every package links.
  */
-const relinkRepository = (packageDir: string, repo: string): void => {
+const relinkRepository = (packageDir: string, repo: string, directory: string): void => {
   const manifestPath = join(packageDir, "package.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  if (!manifest.repository) return;
   const url = `https://github.com/${repo}.git`;
   manifest.repository =
-    typeof manifest.repository === "string" ? url : { ...manifest.repository, url };
+    typeof manifest.repository === "string"
+      ? url
+      : { type: "git", ...manifest.repository, url, directory };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
@@ -97,7 +99,7 @@ for (const dir of readdirSync("packages")) {
 
     const packed = join(work, "package");
     rewriteScope(packed);
-    if (GITHUB_REPOSITORY) relinkRepository(packed, GITHUB_REPOSITORY);
+    if (GITHUB_REPOSITORY) relinkRepository(packed, GITHUB_REPOSITORY, `packages/${dir}`);
 
     if (DRY_RUN) {
       console.log(`→ [dry-run] ${tag}`);
