@@ -30,6 +30,8 @@ const TARGET_PREFIX = `${SCOPE}/${NAME_PREFIX}`; // e.g. "@jrolfs/pascal-"
 const REGISTRY = "https://npm.pkg.github.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 const IN_CI = process.env.GITHUB_ACTIONS === "true";
+// "owner/repo" of the publishing fork in CI; used to link packages to this repo.
+const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 
 // Files whose contents may reference the scope. Note extname("x.d.ts") === ".ts".
 const TEXT_EXT = new Set([
@@ -49,6 +51,21 @@ const rewriteScope = (dir: string): void => {
     if (!before.includes(SOURCE_PREFIX)) continue;
     writeFileSync(path, before.replaceAll(SOURCE_PREFIX, TARGET_PREFIX));
   }
+};
+
+/**
+ * Point the packed package's repository.url at the publishing fork so GitHub
+ * Packages links the package to this repo. The source field still points at
+ * upstream (pascalorg/editor); only the published artifact is changed.
+ */
+const relinkRepository = (packageDir: string, repo: string): void => {
+  const manifestPath = join(packageDir, "package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  if (!manifest.repository) return;
+  const url = `https://github.com/${repo}.git`;
+  manifest.repository =
+    typeof manifest.repository === "string" ? url : { ...manifest.repository, url };
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
 const newTags: string[] = [];
@@ -80,6 +97,7 @@ for (const dir of readdirSync("packages")) {
 
     const packed = join(work, "package");
     rewriteScope(packed);
+    if (GITHUB_REPOSITORY) relinkRepository(packed, GITHUB_REPOSITORY);
 
     if (DRY_RUN) {
       console.log(`→ [dry-run] ${tag}`);
