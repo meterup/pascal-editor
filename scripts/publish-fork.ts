@@ -10,7 +10,7 @@ import { extname, join } from "node:path";
 // only inside the published tarball.
 //
 // Names are rescoped AND re-prefixed: `@pascal-app/<x>` -> `${SCOPE}/pascal-<x>`
-// (e.g. @pascal-app/viewer -> @jrolfs/pascal-viewer). The `pascal-` prefix keeps
+// (e.g. @pascal-app/viewer -> @meterup/pascal-viewer). The `pascal-` prefix keeps
 // the published names meaningful outside the upstream scope, where bare names
 // like `core`/`viewer` would be too generic.
 //
@@ -24,9 +24,9 @@ import { extname, join } from "node:path";
 // only thing that changes. Auth comes from .npmrc (NODE_AUTH_TOKEN).
 
 const SOURCE_PREFIX = "@pascal-app/";
-const SCOPE = process.env.PUBLISH_SCOPE ?? "@jrolfs";
+const SCOPE = process.env.PUBLISH_SCOPE ?? "@meterup";
 const NAME_PREFIX = "pascal-"; // always prefix published names under the fork scope
-const TARGET_PREFIX = `${SCOPE}/${NAME_PREFIX}`; // e.g. "@jrolfs/pascal-"
+const TARGET_PREFIX = `${SCOPE}/${NAME_PREFIX}`; // e.g. "@meterup/pascal-"
 const REGISTRY = "https://npm.pkg.github.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 const IN_CI = process.env.GITHUB_ACTIONS === "true";
