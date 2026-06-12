@@ -62,6 +62,33 @@ import { FloorplanGeometryRenderer } from './floorplan-geometry-renderer'
 // constants in floorplan-panel.tsx. Sizes are in screen pixels — the
 // dispatcher multiplies by `unitsPerPixel` so handles stay the same on-
 // screen size at any zoom.
+/**
+ * Per-node geometry cache for the floor-plan builder.
+ *
+ * The registry layer's `entries` useMemo re-runs whenever any of its many
+ * dependencies change (`hoveredId`, `selectedIds`, `movingNode`, palette,
+ * etc.). Without this cache, every state change forces `def.floorplan(node,
+ * ctx)` to run for every node in the active level — O(n) builder calls for
+ * a single pointer-move event. On large scenes (~400+ wall segments from
+ * detection output) this drops frame rate to ~1 FPS.
+ *
+ * Cache key is the `AnyNode` object reference. Zustand mutates the scene
+ * immutably, so any node change produces a new reference and the stale
+ * entry is unreachable (GC'd via WeakMap). We only cache when the node has
+ * no active visual state (selected/highlighted/hovered/moving) and the
+ * palette matches — the builder may emit different chrome based on those.
+ *
+ * The cache is bypassed entirely while any live editing is in flight
+ * (`liveTransforms` / `liveOverrides` non-empty) because cross-sibling
+ * builders may read those via `def.floorplanSiblingOverrides`.
+ */
+type CachedEntry = {
+  palette: FloorplanPalette | undefined
+  base: FloorplanGeometry | null
+  overlay: FloorplanGeometry | null
+}
+const geometryCache = new WeakMap<AnyNode, CachedEntry>()
+
 const ENDPOINT_HANDLE_SELECTED_RADIUS_PX = 8
 const ENDPOINT_HANDLE_ACTIVE_RADIUS_PX = 9
 const ENDPOINT_HANDLE_DOT_RADIUS_PX = 3
@@ -270,6 +297,30 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
       highlighted: boolean
     }[] = []
 
+    const palette = renderCtx?.palette
+
+    // Live edits publish per-node entries into `liveTransforms` (mover-style
+    // drags: items, slabs, ceilings) or `liveOverrides` (per-frame field
+    // patches: wall endpoint drags). By convention the publishers include
+    // every node whose geometry should reflect the cursor — for a wall
+    // drag that's the moved wall plus its linked neighbours (see
+    // `wallFloorplanSiblingOverrides`). So we only need to bypass the
+    // cache for nodes explicitly in those maps. Everything else — doors,
+    // windows, slabs, ceilings, items, zones, and non-linked walls — can
+    // hit the cache even mid-drag.
+    const canUseCache = (
+      id: AnyNodeId,
+      selected: boolean,
+      highlighted: boolean,
+      hovered: boolean,
+      moving: boolean,
+    ): boolean => {
+      if (selected || highlighted || hovered || moving) return false
+      if (liveTransforms.has(id)) return false
+      if (liveOverrides.has(id)) return false
+      return true
+    }
+
     const visit = (id: AnyNodeId) => {
       const node = nodes[id]
       if (!node) return
@@ -280,6 +331,30 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
         const highlighted = highlightedIdSet.has(id)
         const hovered = hoveredId === id
         const moving = movingNode?.id === id
+
+        // Fast path: stable nodes with no active visual state can reuse
+        // the last builder result. Walls dominate large scenes (~400+ for
+        // CV-detected floor plans) and most are inert at any given moment;
+        // skipping their builder + geometry split is the difference
+        // between 1 FPS and 60 FPS on hover.
+        if (canUseCache(id, selected, highlighted, hovered, moving)) {
+          const cached = geometryCache.get(node)
+          if (cached && cached.palette === palette) {
+            out.push({
+              id,
+              node,
+              base: cached.base,
+              overlay: cached.overlay,
+              selected: false,
+              highlighted: false,
+            })
+            const childIds = (node as unknown as { children?: AnyNodeId[] }).children
+            if (Array.isArray(childIds)) {
+              for (const cid of childIds) visit(cid)
+            }
+            return
+          }
+        }
         // Live-transform override — when a mover is publishing per-frame
         // position/rotation, render that here instead of the committed
         // scene state. Without this the 2D floor plan would only update
@@ -369,6 +444,12 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
         if (geometry) {
           const { base, overlay } = splitFloorplanOverlay(geometry)
           out.push({ id, node: effectiveNode, base, overlay, selected, highlighted })
+          // Only cache the inert form so the next hover/selection on a
+          // neighbouring node can reuse it. Caching mid-edit would store
+          // chrome geometry against a stable node ref and never invalidate.
+          if (canUseCache(id, selected, highlighted, hovered, moving)) {
+            geometryCache.set(node, { palette, base, overlay })
+          }
         }
       }
       const childIds = (node as unknown as { children?: AnyNodeId[] }).children
@@ -406,6 +487,26 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
         const highlighted = highlightedIdSet.has(cid)
         const hovered = hoveredId === cid
         const moving = movingNode?.id === cid
+
+        // Same per-node cache fast path as the level-scoped DFS above.
+        // Elevator runtime ticks via `interactiveElevators` already force
+        // a fresh useMemo run, so the cached entries will be repopulated
+        // with up-to-date geometry on the next pass.
+        if (canUseCache(cid, selected, highlighted, hovered, moving)) {
+          const cached = geometryCache.get(node)
+          if (cached && cached.palette === palette) {
+            out.push({
+              id: cid,
+              node,
+              base: cached.base,
+              overlay: cached.overlay,
+              selected: false,
+              highlighted: false,
+            })
+            continue
+          }
+        }
+
         const ctx: GeometryContext = {
           resolve: <N = AnyNode>(rid: AnyNodeId): N | undefined => nodes[rid] as N | undefined,
           children: [],
@@ -428,6 +529,9 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
         if (geometry) {
           const { base, overlay } = splitFloorplanOverlay(geometry)
           out.push({ id: cid, node, base, overlay, selected, highlighted })
+          if (canUseCache(cid, selected, highlighted, hovered, moving)) {
+            geometryCache.set(node, { palette, base, overlay })
+          }
         }
       }
     }
