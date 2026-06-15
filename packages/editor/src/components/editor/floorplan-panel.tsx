@@ -2828,6 +2828,7 @@ function FloorplanGuideImage({
         />
       ) : null}
       <image
+        crossOrigin="anonymous"
         height={planHeight}
         href={resolvedUrl}
         pointerEvents="none"
