@@ -4,10 +4,21 @@
   "description": "Pascal building editor component",
   "type": "module",
   "exports": {
-    ".": "./src/index.tsx",
-    "./catalog": "./src/components/ui/item-catalog/catalog-items.tsx"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.tsx",
+      "default": "./src/index.tsx"
+    },
+    "./catalog": {
+      "types": "./dist/components/ui/item-catalog/catalog-items.d.ts",
+      "import": "./src/components/ui/item-catalog/catalog-items.tsx",
+      "default": "./src/components/ui/item-catalog/catalog-items.tsx"
+    }
   },
+  "files": ["dist", "src", "README.md"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
