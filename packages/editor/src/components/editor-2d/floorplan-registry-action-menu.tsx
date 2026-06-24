@@ -54,9 +54,11 @@ export function FloorplanRegistryActionMenu() {
   // Only show for registered kinds (skip legacy kinds — they have their
   // own FloorplanActionMenuLayer entries).
   const selectedKind = useScene((s) => (selectedId ? (s.nodes[selectedId]?.type ?? null) : null))
+  // Hide the contextual action menu when the scene is read-only (version-preview).
+  const readOnly = useScene((s) => s.readOnly)
   const def = selectedKind ? nodeRegistry.get(selectedKind) : null
   const isRegistryKind = !!def
-  const isVisible = isRegistryKind && !movingNode
+  const isVisible = isRegistryKind && !movingNode && !readOnly
   const isWall = selectedKind === 'wall'
 
   useEffect(() => {
