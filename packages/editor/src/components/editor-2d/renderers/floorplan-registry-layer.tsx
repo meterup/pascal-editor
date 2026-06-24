@@ -160,6 +160,10 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
   const setHoveredId = useViewer((s) => s.setHoveredId)
   const setSelection = useViewer((s) => s.setSelection)
   const nodes = useScene((s) => s.nodes)
+  // Read-only scene (e.g. version-preview): suppress the interactive 2D edit
+  // handles in the overlay pass so a locked plan shows no move/resize/vertex
+  // affordances. Selection (base-pass hit-lines) and labels still render.
+  const readOnly = useScene((s) => s.readOnly)
   // When a building is being moved, its explicit selection may be
   // cleared as part of the move handoff. Fall back to the
   // mid-drag building id so the dimmed floor keeps rendering
@@ -906,9 +910,13 @@ export const FloorplanRegistryLayer = memo(function FloorplanRegistryLayer() {
           still routes through the same selection-handling `<g>` so a
           click on a zone's name selects the zone. */}
       <g className="floorplan-registry-overlay">
-        {entries.map(({ id, overlay }) =>
-          overlay ? renderEntry(id, overlay, `overlay-${id}`) : null,
-        )}
+        {entries.map(({ id, overlay }) => {
+          if (!overlay) return null
+          // In read-only mode strip the interactive edit handles (keeping
+          // labels / dimensions) so locked nodes expose no 2D affordances.
+          const o = readOnly ? stripEditHandleGeometry(overlay) : overlay
+          return o ? renderEntry(id, o, `overlay-${id}`) : null
+        })}
       </g>
       {/* Transient live-rotation readout — drawn last so the wedge + degree
           chip sit above all handle chrome while a rotate-arrow is dragged. */}
@@ -1789,6 +1797,37 @@ const OVERLAY_KINDS = new Set<FloorplanGeometry['kind']>([
   'dimension',
   'dimension-label',
 ])
+
+/**
+ * Interactive edit-handle kinds — the move/resize/vertex/rotate affordances.
+ * A subset of `OVERLAY_KINDS` that excludes the informational `text` /
+ * `dimension` / `dimension-label`, so a read-only scene can hide the handles
+ * while keeping measurements and labels visible.
+ */
+const EDIT_HANDLE_KINDS = new Set<FloorplanGeometry['kind']>([
+  'endpoint-handle',
+  'midpoint-handle',
+  'edge-handle',
+  'move-handle',
+  'move-arrow',
+  'rotate-arrow',
+])
+
+/**
+ * Remove interactive edit-handle geometry from an overlay tree, preserving all
+ * other overlay primitives (labels, dimensions). Returns `null` if nothing
+ * remains.
+ */
+function stripEditHandleGeometry(g: FloorplanGeometry): FloorplanGeometry | null {
+  if (EDIT_HANDLE_KINDS.has(g.kind)) return null
+  if (g.kind === 'group') {
+    const children = g.children
+      .map(stripEditHandleGeometry)
+      .filter((child): child is FloorplanGeometry => child !== null)
+    return children.length > 0 ? { ...g, children } : null
+  }
+  return g
+}
 
 /**
  * Walk a `FloorplanGeometry` tree and split it into two trees: one with
