@@ -162,6 +162,8 @@ export function FloorplanRegistryActionMenu() {
       })
     )
   })
+  // Hide the contextual action menu when the scene is read-only (version-preview).
+  const readOnly = useScene((s) => s.readOnly)
   const def = selectedKind ? nodeRegistry.get(selectedKind) : null
   const isRegistryKind = !!def
   const isVisible =
@@ -169,6 +171,7 @@ export function FloorplanRegistryActionMenu() {
     def?.presentation?.actionMenu !== false &&
     !movingNode &&
     !isCurveReshape &&
+    !readOnly &&
     isFloorplanHovered
   const isWall = selectedKind === 'wall'
   const quickActionNodes = useScene(

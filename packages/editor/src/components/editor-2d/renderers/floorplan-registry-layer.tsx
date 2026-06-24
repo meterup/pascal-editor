@@ -1845,6 +1845,11 @@ const FloorplanRegistryEntry = memo(function FloorplanRegistryEntry({
     (state) =>
       state.selection.selectedIds.length > 1 && state.selection.selectedIds.includes(nodeId),
   )
+  // Read-only scene (e.g. version-preview): suppress the interactive 2D edit
+  // handles so a locked plan shows no move/resize/vertex affordances. Unlike
+  // the multi-selection `suppressHandles` path, dimensions and labels survive —
+  // a locked plan is still worth measuring.
+  const readOnly = useScene((state) => state.readOnly)
   const selectedLevelId = useViewer((state) => state.selection.levelId)
   const selectionProxyId = resolveSelectionProxyId(
     node,
@@ -1984,10 +1989,14 @@ const FloorplanRegistryEntry = memo(function FloorplanRegistryEntry({
   // Multi-selection shows highlight only: strip this member's edit handles /
   // dimension chrome (all of which live in the overlay pass) while keeping
   // its highlighted body geometry.
-  const geometry =
+  const selectionGeometry =
     visibleGeometry && suppressHandles && pass === 'overlay'
       ? stripHandleChrome(visibleGeometry)
       : visibleGeometry
+  const geometry =
+    selectionGeometry && readOnly && pass === 'overlay'
+      ? stripEditHandleGeometry(selectionGeometry)
+      : selectionGeometry
   if (!geometry) return null
 
   const entryClick = isMarqueeSelectionActive ? undefined : onClickStop
@@ -3239,6 +3248,38 @@ const OVERLAY_KINDS = new Set<FloorplanGeometry['kind']>([
   'dimension-label',
   'equal-spacing-badge',
 ])
+
+/**
+ * Interactive edit-handle kinds — the move/resize/vertex/rotate affordances.
+ * The subset of `OVERLAY_KINDS` that accepts pointer input, so a read-only
+ * scene can hide the handles while the informational overlay kinds (text,
+ * dimensions, spacing badges) keep rendering. Contrast `HANDLE_CHROME_KINDS`,
+ * which also drops measurement chrome for multi-selection.
+ */
+const EDIT_HANDLE_KINDS = new Set<FloorplanGeometry['kind']>([
+  'endpoint-handle',
+  'midpoint-handle',
+  'edge-handle',
+  'move-handle',
+  'move-arrow',
+  'rotate-arrow',
+])
+
+/**
+ * Remove interactive edit-handle geometry from an overlay tree, preserving all
+ * other overlay primitives (labels, dimensions). Returns `null` if nothing
+ * remains.
+ */
+function stripEditHandleGeometry(g: FloorplanGeometry): FloorplanGeometry | null {
+  if (EDIT_HANDLE_KINDS.has(g.kind)) return null
+  if (g.kind === 'group') {
+    const children = g.children
+      .map(stripEditHandleGeometry)
+      .filter((child): child is FloorplanGeometry => child !== null)
+    return children.length > 0 ? { ...g, children } : null
+  }
+  return g
+}
 
 /**
  * Walk a `FloorplanGeometry` tree and split it into two trees: one with
