@@ -18,7 +18,6 @@ import {
   type ZoneNode,
 } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
-import type { ThreeElements } from '@react-three/fiber'
 import { useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import {
@@ -39,12 +38,6 @@ import { EDITOR_LAYER } from '../../../lib/constants'
 import { sfxEmitter } from '../../../lib/sfx-bus'
 import useEditor from '../../../store/use-editor'
 import { CursorSphere } from '../shared/cursor-sphere'
-
-declare module 'react/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements extends ThreeElements {}
-  }
-}
 
 /**
  * Module-level flag to prevent the SelectionManager from deselecting
