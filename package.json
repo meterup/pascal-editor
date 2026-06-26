@@ -16,7 +16,8 @@
     "restart": "bun kill && bun clean:cache && bun dev",
     "changeset": "changeset",
     "ci:version": "changeset version && bun install",
-    "ci:publish": "bun run scripts/publish-fork.ts"
+    "ci:publish": "bun run scripts/publish-fork.ts",
+    "snapshot": "bun run scripts/publish-fork.ts --snapshot"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

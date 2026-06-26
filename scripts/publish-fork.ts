@@ -22,6 +22,12 @@ import { extname, join } from "node:path";
 //
 // To target a different scope (e.g. @meterup) set PUBLISH_SCOPE — that is the
 // only thing that changes. Auth comes from .npmrc (NODE_AUTH_TOKEN).
+//
+// With --snapshot (run after `bun changeset` + `bun run build`): mints
+// 0.0.0-snapshot-<timestamp> versions via `changeset version --snapshot`,
+// publishes them to the `snapshot` dist-tag (leaving `latest` untouched), and
+// skips git tags / GitHub Releases. It dirties the working tree (version bumps +
+// consumed changesets) — discard with `git checkout .` afterward; CI is ephemeral.
 
 const SOURCE_PREFIX = "@pascal-app/";
 const SCOPE = process.env.PUBLISH_SCOPE ?? "@meterup";
@@ -30,6 +36,11 @@ const TARGET_PREFIX = `${SCOPE}/${NAME_PREFIX}`; // e.g. "@meterup/pascal-"
 const REGISTRY = "https://npm.pkg.github.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 const IN_CI = process.env.GITHUB_ACTIONS === "true";
+// --snapshot: mint ephemeral 0.0.0-snapshot-<timestamp> versions and publish them
+// to the `snapshot` dist-tag instead of `latest` (see changesets snapshot releases).
+const SNAPSHOT = process.argv.includes("--snapshot");
+const SNAPSHOT_TAG = "snapshot"; // both the changesets snapshot id and the dist-tag
+const DIST_TAG = SNAPSHOT ? SNAPSHOT_TAG : "latest";
 // "owner/repo" of the publishing fork in CI; used to link packages to this repo.
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 
@@ -70,6 +81,15 @@ const relinkRepository = (packageDir: string, repo: string, directory: string): 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
+// Snapshot mode mints throwaway versions from the pending changesets. Only
+// packages with a changeset (+ their dependents) get a snapshot version; the
+// rest keep their released version and are skipped below as already-published.
+// `bun install` re-resolves the lockfile so `bun pm pack` emits snapshot ranges.
+if (SNAPSHOT && !DRY_RUN) {
+  await $`bunx changeset version --snapshot ${SNAPSHOT_TAG}`;
+  await $`bun install`;
+}
+
 const newTags: string[] = [];
 
 for (const dir of readdirSync("packages")) {
@@ -106,8 +126,8 @@ for (const dir of readdirSync("packages")) {
       continue;
     }
 
-    console.log(`→ Publishing ${tag}`);
-    await $`npm publish ${packed} --ignore-scripts --registry ${REGISTRY}`;
+    console.log(`→ Publishing ${tag} (dist-tag: ${DIST_TAG})`);
+    await $`npm publish ${packed} --ignore-scripts --registry ${REGISTRY} --tag ${DIST_TAG}`;
     newTags.push(tag);
   } finally {
     rmSync(work, { recursive: true, force: true });
@@ -119,8 +139,9 @@ for (const dir of readdirSync("packages")) {
 // printed name against a workspace package, which never matches our rescoped
 // names (the source stays @pascal-app/*), so it errors. Instead we own the tag
 // + release here, named after what was actually published. Best-effort so a
-// re-run (tag/release already exists) doesn't fail the job.
-if (IN_CI && newTags.length > 0) {
+// re-run (tag/release already exists) doesn't fail the job. Skipped for
+// snapshots — they're ephemeral and shouldn't leave tags/releases behind.
+if (!SNAPSHOT && IN_CI && newTags.length > 0) {
   for (const tag of newTags) await $`git tag ${tag}`.nothrow();
   await $`git push origin ${newTags}`.nothrow();
   for (const tag of newTags) {
