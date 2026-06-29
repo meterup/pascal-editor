@@ -1,6 +1,6 @@
 {
   "name": "@pascal-app/nodes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Built-in node bundles for the Pascal 3D editor — one folder per kind, exported as `builtinPlugin`",
   "type": "module",
   "main": "./dist/index.js",
