@@ -5,6 +5,7 @@ import type {
   FloorplanAffordanceSession,
   FloorplanGeometry,
   FloorplanPalette,
+  FloorplanPoint,
   LiveNodeOverrides,
 } from '@pascal-app/core'
 import { type AnyNodeDefinition, emitter, nodeRegistry, registerNode } from '@pascal-app/core'
@@ -26,6 +27,7 @@ import {
   isFloorplanOpeningPlacementState,
   resolveFloorplanHandleUnitsPerPixel,
   splitFloorplanOverlay,
+  stripEditHandleGeometry,
   subscribeFloorplanAffordanceToolCancel,
 } from './floorplan-registry-layer'
 
@@ -601,5 +603,65 @@ describe('collectFloorplanLinkedLevelNodes', () => {
         new Set([parent.id as AnyNodeId]),
       ),
     ).toEqual([])
+  })
+})
+
+describe('read-only edit-handle stripping', () => {
+  const origin: FloorplanPoint = [0, 0]
+
+  // Every overlay kind that accepts pointer input. A read-only scene must show
+  // none of them — a locked plan with a live drag handle is a lie.
+  const editHandles = [
+    { kind: 'endpoint-handle', point: origin, state: 'idle', affordance: 'move', payload: null },
+    { kind: 'midpoint-handle', point: origin, affordance: 'insert', payload: null },
+    { kind: 'edge-handle', x1: 0, y1: 0, x2: 1, y2: 0, affordance: 'resize', payload: null },
+    { kind: 'move-handle', point: origin },
+    { kind: 'move-arrow', point: origin, angle: 0 },
+    { kind: 'rotate-arrow', point: origin, angle: 0, affordance: 'rotate' },
+  ] satisfies FloorplanGeometry[]
+
+  // The kinds that must survive. This is the whole difference from the
+  // multi-selection `stripHandleChrome` pass, which also drops measurement
+  // chrome: a locked plan is still worth reading and measuring.
+  const informational = [
+    { kind: 'text', x: 0, y: 0, text: 'Office', fontSize: 0.15 },
+    {
+      kind: 'dimension',
+      start: origin,
+      end: [1, 0],
+      offsetNormal: [0, 1],
+      offsetDistance: 0.3,
+      extensionOvershoot: 0.05,
+      text: '1 m',
+    },
+    { kind: 'dimension-label', cx: 0, cy: 0, text: '1 m', angle: 0 },
+    { kind: 'equal-spacing-badge', point: origin, text: '1 m', angle: 0 },
+  ] satisfies FloorplanGeometry[]
+
+  test('drops every kind that accepts pointer input', () => {
+    for (const handle of editHandles) {
+      expect(stripEditHandleGeometry(handle)).toBeNull()
+    }
+  })
+
+  test('keeps the informational overlay kinds', () => {
+    for (const geometry of informational) {
+      expect(stripEditHandleGeometry(geometry)).toBe(geometry)
+    }
+  })
+
+  test('recurses through groups and preserves the transform', () => {
+    const transform = { translate: [2, 3] as FloorplanPoint, rotate: Math.PI / 4 }
+    const stripped = stripEditHandleGeometry({
+      kind: 'group',
+      transform,
+      children: [...editHandles, ...informational],
+    })
+
+    expect(stripped).toEqual({ kind: 'group', transform, children: informational })
+  })
+
+  test('collapses a group left holding nothing but handles', () => {
+    expect(stripEditHandleGeometry({ kind: 'group', children: [...editHandles] })).toBeNull()
   })
 })

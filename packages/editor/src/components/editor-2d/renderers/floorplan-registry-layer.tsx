@@ -3270,7 +3270,7 @@ const EDIT_HANDLE_KINDS = new Set<FloorplanGeometry['kind']>([
  * other overlay primitives (labels, dimensions). Returns `null` if nothing
  * remains.
  */
-function stripEditHandleGeometry(g: FloorplanGeometry): FloorplanGeometry | null {
+export function stripEditHandleGeometry(g: FloorplanGeometry): FloorplanGeometry | null {
   if (EDIT_HANDLE_KINDS.has(g.kind)) return null
   if (g.kind === 'group') {
     const children = g.children
