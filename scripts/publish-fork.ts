@@ -15,10 +15,11 @@ import { extname, join } from "node:path";
 // like `core`/`viewer` would be too generic.
 //
 // Per package: `bun pm pack` (which resolves `workspace:` ranges to concrete
-// versions) -> rewrite `@pascal-app/` to `${TARGET_PREFIX}` across every file in
-// the tarball -> `npm publish`. The rewrite must touch the emitted code too, not
-// just package.json: a consumer installs `${SCOPE}/pascal-core`, so the `import`
-// specifiers in dist/** (and editor's shipped src) have to match.
+// versions) -> rewrite our own `@pascal-app/*` names to `${TARGET_PREFIX}*`
+// across every file in the tarball -> `npm publish`. The rewrite must touch the
+// emitted code too, not just package.json: a consumer installs
+// `${SCOPE}/pascal-core`, so the `import` specifiers in dist/** (and editor's
+// shipped src) have to match.
 //
 // To target a different scope (e.g. @meterup) set PUBLISH_SCOPE — that is the
 // only thing that changes. Auth comes from .npmrc (NODE_AUTH_TOKEN).
@@ -49,7 +50,34 @@ const TEXT_EXT = new Set([
   ".js", ".cjs", ".mjs", ".ts", ".cts", ".mts", ".tsx", ".jsx", ".json", ".md", ".map",
 ]);
 
-/** Rewrite every `@pascal-app/` token to `${TARGET_PREFIX}` across a packed package. */
+// Any `@pascal-app/<name>`, stopping before a subpath so `/catalog` survives.
+// No `.` in the class: npm allows it in a name but none of ours use it, and a
+// prose reference ending a sentence ("...in @pascal-app/nodes.") is far more
+// common — capturing the period would leave the name unrecognized and unrenamed.
+const SCOPED_NAME = /@pascal-app\/[a-zA-Z0-9_-]+/g;
+
+/** Read a package.json `name`, or null if the directory isn't a package. */
+const packageNameIn = (dir: string): string | null => {
+  try {
+    const { name } = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    return typeof name === "string" ? name : null;
+  } catch {
+    return null;
+  }
+};
+
+// The rewrite has to key off the workspace's own package names, not the bare
+// scope prefix: `@pascal-app` also hosts packages upstream merely *consumes*
+// from npm and we don't fork — `@pascal-app/lingo`, `@pascal-app/plugin-*`.
+// Renaming those would point consumers at `${SCOPE}/pascal-lingo` and friends,
+// which nobody publishes, and the install would fail to resolve.
+const ownedNames = new Set(
+  readdirSync("packages")
+    .map((dir) => packageNameIn(join("packages", dir)))
+    .filter((name): name is string => name !== null && name.startsWith(SOURCE_PREFIX)),
+);
+
+/** Rewrite our own `@pascal-app/*` names to `${TARGET_PREFIX}*` across a packed package. */
 const rewriteScope = (dir: string): void => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -60,7 +88,10 @@ const rewriteScope = (dir: string): void => {
     if (!TEXT_EXT.has(extname(entry.name))) continue;
     const before = readFileSync(path, "utf8");
     if (!before.includes(SOURCE_PREFIX)) continue;
-    writeFileSync(path, before.replaceAll(SOURCE_PREFIX, TARGET_PREFIX));
+    const after = before.replace(SCOPED_NAME, (name) =>
+      ownedNames.has(name) ? name.replace(SOURCE_PREFIX, TARGET_PREFIX) : name,
+    );
+    if (after !== before) writeFileSync(path, after);
   }
 };
 
