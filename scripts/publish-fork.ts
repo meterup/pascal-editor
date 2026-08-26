@@ -81,11 +81,26 @@ const relinkRepository = (packageDir: string, repo: string, directory: string): 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
+/** Whether changesets is holding a prerelease line (`changeset pre enter`). */
+const inPreMode = (): boolean => {
+  try {
+    return JSON.parse(readFileSync(join(".changeset", "pre.json"), "utf8")).mode === "pre";
+  } catch {
+    return false;
+  }
+};
+
 // Snapshot mode mints throwaway versions from the pending changesets. Only
 // packages with a changeset (+ their dependents) get a snapshot version; the
 // rest keep their released version and are skipped below as already-published.
 // `bun install` re-resolves the lockfile so `bun pm pack` emits snapshot ranges.
+//
+// Changesets refuses --snapshot while in pre mode, and the fork sits in pre mode
+// permanently to hold the 1.x-beta line. Exiting is safe here and only here: the
+// tree is already throwaway (see the header), so the flipped pre.json dies with
+// it instead of ending the prerelease for real.
 if (SNAPSHOT && !DRY_RUN) {
+  if (inPreMode()) await $`bunx changeset pre exit`;
   await $`bunx changeset version --snapshot ${SNAPSHOT_TAG}`;
   await $`bun install`;
 }

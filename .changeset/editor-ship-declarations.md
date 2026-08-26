@@ -1,18 +1,25 @@
 ---
-"@pascal-app/editor": patch
+'@pascal-app/editor': patch
 ---
 
 Ship type declarations and resolve them via a `types` export condition.
 
-**@pascal-app/editor** exposed only its TypeScript source via
-`exports["."] = "./src/index.tsx"`, so every TypeScript consumer
-type-checked the editor's whole source tree—surfacing the internal
-**react-three-fiber** JSX augmentation (`declare module 'react/jsx-runtime'` in
-box-select-tool.tsx), which conflicts with React 19 DOM element types
-and pollutes the global `JSX.IntrinsicElements` union downstream.
+`@pascal-app/editor` is the only publishable package that exposes raw
+TypeScript rather than build output — `exports["."]` points straight at
+`./src/index.tsx`. Every TypeScript consumer therefore type-checks the editor's
+entire source tree, all 406 non-test files of it, on top of its own. That is
+slow enough to matter on its own, and it also drags whatever the source
+transitively pulls in — notably the react-three-fiber JSX augmentation — into
+the consumer's global `JSX.IntrinsicElements` union, where it conflicts with
+React 19's DOM element types and can push unrelated files past the
+type-checker's complexity limits.
 
-Emit declaration-only output to **dist/** and
-point the `types` export condition at `dist/index.d.ts` The runtime entrypoint stays on
-**src/** for embedders' bundlers. Consumers now resolve the public type
-surface and the augmentation lives only in `box-select-tool`'s declaration,
-which nothing in the public type graph imports, so it stops leaking.
+Emit declaration-only output to `dist/` via a `tsconfig.build.json` and point
+the `types` export condition at `dist/index.d.ts`. The runtime conditions stay
+on `src/` so embedders' bundlers are unaffected; only type resolution changes.
+Consumers now see the public type surface instead of the implementation.
+
+One consequence worth knowing: the `types` condition applies to _self_-
+referential `@pascal-app/editor` imports too, so a stale or missing `dist/`
+makes the package's own type-check report phantom "has no exported member"
+errors. Build before checking types.

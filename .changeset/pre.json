@@ -1,0 +1,22 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "editor": "0.1.0",
+    "ifc-converter-app": "0.1.0",
+    "@pascal-app/capture-protocol": "1.0.0-beta.4",
+    "@pascal-app/capture-viewer": "1.0.0-beta.4",
+    "@pascal-app/cli": "1.0.0-beta.1",
+    "@pascal-app/core": "1.0.0-beta.5",
+    "@pascal-app/editor": "1.0.0-beta.5",
+    "@repo/eslint-config": "0.0.0",
+    "@pascal-app/ifc-converter": "1.0.0-beta.5",
+    "@pascal-app/mcp": "1.0.0-beta.6",
+    "@pascal-app/nodes": "1.0.0-beta.5",
+    "@repo/typescript-config": "0.0.0",
+    "@repo/ui": "0.0.0",
+    "@pascal-app/viewer": "1.0.0-beta.5",
+    "@pascal/typescript-config": "0.0.0"
+  },
+  "changesets": []
+}
