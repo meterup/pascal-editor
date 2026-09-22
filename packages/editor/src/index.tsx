@@ -31,6 +31,7 @@ export { FirstPersonControls } from './components/editor/first-person-controls'
 export { FloatingActionMenu as FloatingMenu } from './components/editor/floating-action-menu'
 export type {
   FloorplanBackgroundContext,
+  FloorplanNavigationInput,
   FloorplanPanelPalette,
 } from './components/editor/floorplan-panel'
 // Embed surface — the editor's real in-canvas affordances, so a host can mount
