@@ -16,6 +16,13 @@ export type SceneTheme = {
   // separate from `background` so dark themes can have a lit ground that reads
   // as ground rather than going near-black.
   ground: string
+  // Optional ground-grid line colours and idle opacity. Omitted → derived from
+  // `appearance`, as before. Carved out for the same reason as `ground`: the
+  // grid is drawn over that lit fill, so how it reads is a property of the pair
+  // rather than something a light/dark flag can settle. `appearance` hardcoded
+  // both colours, and in dark mode it also ignored `<Grid>`'s own `cellColor` /
+  // `sectionColor` props, so a host had no dial at all.
+  grid?: { cell?: string; section?: string; idleOpacity?: number }
   ambient: { color: string; intensity: number }
   hemi?: { sky: string; ground: string; intensity: number }
   lights: Array<{
