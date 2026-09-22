@@ -72,6 +72,7 @@ import { FloatingBuildingActionMenu } from './floating-building-action-menu'
 import { FloorplanModeCoordinator } from './floorplan-mode-coordinator'
 import {
   type FloorplanBackgroundContext,
+  type FloorplanNavigationInput,
   FloorplanPanel,
   type FloorplanPanelPalette,
 } from './floorplan-panel'
@@ -189,6 +190,12 @@ export interface EditorProps {
    * layers are keyed on, so a fresh object each render costs their memoization.
    */
   floorplanPalette?: Partial<FloorplanPanelPalette>
+  /**
+   * Who handles pan, rotate and zoom over the 2D floor plan. Defaults to
+   * `'builtin'`; `'host'` suppresses those gestures so the host can bind its
+   * own and drive the view with `useEditor.publishNavigationSyncPose`.
+   */
+  floorplanNavigationInput?: FloorplanNavigationInput
 
   projectId?: string | null
 
@@ -1002,6 +1009,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanSceneSlot,
   floorplanBackgroundSlot,
   floorplanPalette,
+  floorplanNavigationInput,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -1017,6 +1025,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   floorplanPalette?: Partial<FloorplanPanelPalette>
+  floorplanNavigationInput?: FloorplanNavigationInput
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1098,6 +1107,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
             <FloorplanPanel
               compassHost={viewerAreaEl}
               floorplanBackgroundSlot={floorplanBackgroundSlot}
+              floorplanNavigationInput={floorplanNavigationInput}
               floorplanPalette={floorplanPalette}
               floorplanSceneSlot={floorplanSceneSlot}
             />
@@ -1229,6 +1239,7 @@ export default function Editor({
   floorplanSceneSlot,
   floorplanBackgroundSlot,
   floorplanPalette,
+  floorplanNavigationInput,
   projectId,
   onLoad,
   onSave,
@@ -1480,6 +1491,7 @@ export default function Editor({
       viewerSceneSlot={viewerSceneSlot}
       floorplanSceneSlot={floorplanSceneSlot}
       floorplanBackgroundSlot={floorplanBackgroundSlot}
+      floorplanNavigationInput={floorplanNavigationInput}
       floorplanPalette={floorplanPalette}
     />
   )

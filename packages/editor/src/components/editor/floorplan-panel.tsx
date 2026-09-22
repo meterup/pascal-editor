@@ -654,6 +654,19 @@ const REFERENCE_REGISTRY_KINDS = new Set<AnyNode['type']>([
 ])
 
 /**
+ * Who handles pan, rotate and zoom gestures over the 2D floor plan.
+ *
+ * `'builtin'` keeps the editor's own bindings: middle-drag or space and
+ * left-drag to pan, right-drag to rotate, wheel and pinch to zoom.
+ *
+ * `'host'` leaves those gestures alone, for hosts that want their own
+ * bindings. Nothing replaces them, so the host has to drive the view itself
+ * by publishing `'host'` poses through `useEditor.publishNavigationSyncPose`.
+ * Node interaction, selection and the compass are unaffected.
+ */
+export type FloorplanNavigationInput = 'builtin' | 'host'
+
+/**
  * Every themed colour the 2D floor plan draws with, from the surface and grid
  * through to selection, handle and snap-guide chrome.
  *
@@ -4969,12 +4982,15 @@ export function FloorplanPanel({
   floorplanSceneSlot,
   floorplanBackgroundSlot,
   floorplanPalette,
+  floorplanNavigationInput = 'builtin',
 }: {
   compassHost?: HTMLElement | null
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   floorplanPalette?: Partial<FloorplanPanelPalette>
+  floorplanNavigationInput?: FloorplanNavigationInput
 }) {
+  const hostOwnsNavigation = floorplanNavigationInput === 'host'
   useFloorplanCameraSyncBridge()
   const viewportHostRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -8252,7 +8268,9 @@ export function FloorplanPanel({
         return
       }
 
-      if (event.code === 'Space' && isFloorplanOpen) {
+      // Key-up stays unguarded, so flipping to host navigation mid-press can't
+      // leave the flag stuck on.
+      if (event.code === 'Space' && isFloorplanOpen && !hostOwnsNavigation) {
         event.preventDefault()
         floorplanSpacePanPressedRef.current = true
         setIsSpacePanPressed(true)
@@ -8317,7 +8335,7 @@ export function FloorplanPanel({
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [isFloorplanOpen, isStairBuildActive, movingNode])
+  }, [hostOwnsNavigation, isFloorplanOpen, isStairBuildActive, movingNode])
 
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
@@ -8812,6 +8830,7 @@ export function FloorplanPanel({
 
   const handleNavigationPointerDown = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
+      if (hostOwnsNavigation) return
       if (event.button === 1 || (event.button === 0 && floorplanSpacePanPressedRef.current)) {
         event.preventDefault()
         event.stopPropagation()
@@ -8888,6 +8907,7 @@ export function FloorplanPanel({
       commitFloorplanZoom,
       buildingRotationDeg,
       floorplanNavigationSyncScheduler,
+      hostOwnsNavigation,
       setFloorplanCursorPosition,
       setCursorPoint,
       stopFloorplanViewAnimation,
@@ -10962,7 +10982,7 @@ export function FloorplanPanel({
 
   useEffect(() => {
     const svg = svgRef.current
-    if (!svg) {
+    if (!svg || hostOwnsNavigation) {
       return
     }
 
@@ -11031,7 +11051,12 @@ export function FloorplanPanel({
       svg.removeEventListener('gesturechange', handleGestureChange)
       svg.removeEventListener('gestureend', handleGestureEnd)
     }
-  }, [commitFloorplanZoom, floorplanNavigationSyncScheduler, zoomViewportAtClientPoint])
+  }, [
+    commitFloorplanZoom,
+    floorplanNavigationSyncScheduler,
+    hostOwnsNavigation,
+    zoomViewportAtClientPoint,
+  ])
 
   const restoreGroundLevelStructureSelection = useCallback(() => {
     const sceneNodes = useScene.getState().nodes
