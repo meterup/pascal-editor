@@ -95,6 +95,7 @@ const NEUTRAL_PALETTE: FloorplanPalette = {
   measurementStroke: '#334155',
   measurementLabelBackground: '#ffffff',
   measurementLabelText: '#111827',
+  alignmentGuideStroke: '#334155',
 }
 
 // Neutral view state — no selection / hover. A neutral palette keeps the

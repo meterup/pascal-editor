@@ -52,6 +52,7 @@ describe('floorplan selection handle sizing', () => {
       measurementStroke: '#111111',
       measurementLabelBackground: '#ffffff',
       measurementLabelText: '#111111',
+      alignmentGuideStroke: '#ef4444',
     } satisfies FloorplanPalette
     const noop = () => {}
     const markup = renderToStaticMarkup(

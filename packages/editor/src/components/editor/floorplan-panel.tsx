@@ -707,6 +707,7 @@ type FloorplanPalette = {
   curveHandleFill: string
   curveHandleStroke: string
   curveHandleHoverStroke: string
+  alignmentGuideStroke: string
 }
 
 const resizeCursorByDirection: Record<ResizeDirection, string> = {
@@ -7045,6 +7046,7 @@ export function FloorplanPanel({
             curveHandleFill: '#ccfbf1',
             curveHandleStroke: '#0f766e',
             curveHandleHoverStroke: '#14b8a6',
+            alignmentGuideStroke: '#ef4444',
           }
         : {
             surface: '#ffffff',
@@ -7101,6 +7103,7 @@ export function FloorplanPanel({
             curveHandleFill: '#ccfbf1',
             curveHandleStroke: '#0f766e',
             curveHandleHoverStroke: '#14b8a6',
+            alignmentGuideStroke: '#ef4444',
           },
     [isDark],
   )
@@ -7125,6 +7128,7 @@ export function FloorplanPanel({
       measurementStroke: palette.measurementStroke,
       measurementLabelBackground: isDark ? '#0f172a' : '#ffffff',
       measurementLabelText: isDark ? '#e2e8f0' : '#171717',
+      alignmentGuideStroke: palette.alignmentGuideStroke,
     }),
     [palette, isDark],
   )
