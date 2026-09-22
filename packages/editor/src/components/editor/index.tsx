@@ -1228,6 +1228,7 @@ export default function Editor({
   const [previewStageMode, setPreviewStageMode] = useState<ViewerStageMode>('3d')
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
   const isCaptureMode = useEditor((s) => s.isCaptureMode)
+  const viewMode = useEditor((s) => s.viewMode)
 
   const sidebarWidth = useSidebarStore((s) => s.width)
   const isSidebarCollapsed = useSidebarStore((s) => s.isCollapsed)
@@ -1336,8 +1337,18 @@ export default function Editor({
     setIsViewerSceneReady(ready)
   }, [])
 
+  const sceneLoaded = !isLoading && !isSceneLoading && hasLoadedInitialScene
+  // A 2D-only stage has nothing to wait for, and cannot wait successfully. The
+  // 3D pane is `display: none`, so its canvas measures 0x0, R3F never renders
+  // the scene tree, no node renderer registers, and `hasCommittedSceneRoot()`
+  // stays false forever: `isViewerSceneReady` is unreachable rather than slow.
+  // Gating the shell on it burned the full readiness fallback on every load.
+  // The plan itself renders off the scene graph, so `sceneLoaded` is the whole
+  // condition here.
+  const twoDimensionalOnly = isPreviewMode ? previewStageMode === '2d' : viewMode === '2d'
+
   useEffect(() => {
-    if (isLoading || isSceneLoading || !hasLoadedInitialScene || isViewerSceneReady) return
+    if (!sceneLoaded || isViewerSceneReady || twoDimensionalOnly) return
 
     const timer = window.setTimeout(() => {
       console.warn('[editor] viewer scene readiness timed out; showing editor shell anyway', {
@@ -1347,22 +1358,13 @@ export default function Editor({
     }, SCENE_READY_FALLBACK_MS)
 
     return () => window.clearTimeout(timer)
-  }, [hasLoadedInitialScene, isLoading, isSceneLoading, isViewerSceneReady, sceneReadyKey])
+  }, [isViewerSceneReady, sceneLoaded, sceneReadyKey, twoDimensionalOnly])
 
-  const showLoader = isLoading || isSceneLoading || !hasLoadedInitialScene || !isViewerSceneReady
-  const visibleLoader =
-    showLoader &&
-    !(
-      isPreviewMode &&
-      previewStageMode === '2d' &&
-      !isLoading &&
-      !isSceneLoading &&
-      hasLoadedInitialScene
-    )
+  const showLoader = !sceneLoaded || (!twoDimensionalOnly && !isViewerSceneReady)
 
   useEffect(() => {
-    onLoaderChange?.(visibleLoader)
-  }, [visibleLoader, onLoaderChange])
+    onLoaderChange?.(showLoader)
+  }, [showLoader, onLoaderChange])
 
   const firstPersonPreviousLevelRef = useRef(useViewer.getState().selection.levelId)
   const wasFirstPersonModeRef = useRef(isFirstPersonMode)
@@ -1488,7 +1490,7 @@ export default function Editor({
     return (
       <>
         <FloorplanModeCoordinator />
-        {visibleLoader && (
+        {showLoader && (
           <div className="fixed inset-0 z-60">
             <SceneLoader className="bg-background" />
           </div>
@@ -1499,7 +1501,7 @@ export default function Editor({
             isFirstPersonMode={isFirstPersonMode}
             mode={previewStageMode}
             onModeChange={setPreviewStageMode}
-            showLoader={visibleLoader}
+            showLoader={showLoader}
             viewerContent={previewViewerContent}
           />
         ) : (
@@ -1561,7 +1563,7 @@ export default function Editor({
   return (
     <div className="dark flex h-full w-full gap-3 bg-neutral-100 p-3 text-foreground">
       <FloorplanModeCoordinator />
-      {visibleLoader && (
+      {showLoader && (
         <div className="fixed inset-0 z-60">
           <SceneLoader className="bg-background" />
         </div>
@@ -1572,7 +1574,7 @@ export default function Editor({
           isFirstPersonMode={isFirstPersonMode}
           mode={previewStageMode}
           onModeChange={setPreviewStageMode}
-          showLoader={visibleLoader}
+          showLoader={showLoader}
           viewerContent={previewViewerContent}
         />
       ) : (
