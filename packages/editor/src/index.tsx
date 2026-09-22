@@ -422,7 +422,12 @@ export {
   type FloorplanMode,
   isFloorplanToolAvailableInMode,
 } from './lib/floorplan/floorplan-mode'
-export { commitFreshPlacementSubtree } from './lib/fresh-planar-placement'
+export {
+  commitFreshPlacementSubtree,
+  createFreshPlacementSubtree,
+  duplicatesAsFreshSubtree,
+  prepareFreshPlacementRootDuplicate,
+} from './lib/fresh-planar-placement'
 export { exportSceneToGlb } from './lib/glb-export'
 export {
   getHistoryCommandState,
