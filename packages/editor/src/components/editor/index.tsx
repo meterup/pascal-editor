@@ -204,6 +204,15 @@ export interface EditorProps {
    * own and drive the view with `useEditor.publishNavigationSyncPose`.
    */
   floorplanNavigationInput?: FloorplanNavigationInput
+  /**
+   * Whether navigating one view moves the other in split mode. Defaults to
+   * `true`.
+   *
+   * Set `false` to let the plan and the camera hold independent viewpoints.
+   * The compass keeps tracking either way, and re-linking snaps the plan back
+   * onto the camera.
+   */
+  floorplanNavigationLink?: boolean
 
   projectId?: string | null
 
@@ -1018,6 +1027,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanBackgroundSlot,
   floorplanPalette,
   floorplanNavigationInput,
+  floorplanNavigationLink,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -1034,6 +1044,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   floorplanPalette?: Partial<FloorplanPanelPalette>
   floorplanNavigationInput?: FloorplanNavigationInput
+  floorplanNavigationLink?: boolean
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1116,6 +1127,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
               compassHost={viewerAreaEl}
               floorplanBackgroundSlot={floorplanBackgroundSlot}
               floorplanNavigationInput={floorplanNavigationInput}
+              floorplanNavigationLink={floorplanNavigationLink}
               floorplanPalette={floorplanPalette}
               floorplanSceneSlot={floorplanSceneSlot}
             />
@@ -1248,6 +1260,7 @@ export default function Editor({
   floorplanBackgroundSlot,
   floorplanPalette,
   floorplanNavigationInput,
+  floorplanNavigationLink,
   projectId,
   onLoad,
   onSave,
@@ -1518,6 +1531,7 @@ export default function Editor({
       floorplanSceneSlot={floorplanSceneSlot}
       floorplanBackgroundSlot={floorplanBackgroundSlot}
       floorplanNavigationInput={floorplanNavigationInput}
+      floorplanNavigationLink={floorplanNavigationLink}
       floorplanPalette={floorplanPalette}
     />
   )

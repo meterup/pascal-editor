@@ -29,6 +29,10 @@ export { BakeExporter } from './components/editor/bake-exporter'
 export { BakeThumbnail } from './components/editor/bake-thumbnail'
 export { FirstPersonControls } from './components/editor/first-person-controls'
 export { FloatingActionMenu as FloatingMenu } from './components/editor/floating-action-menu'
+export {
+  cameraPoseToFloorplanNavigationPose,
+  floorplanNavigationPoseToCameraPose,
+} from './components/editor/floorplan-camera-sync'
 export type {
   FloorplanBackgroundContext,
   FloorplanNavigationInput,

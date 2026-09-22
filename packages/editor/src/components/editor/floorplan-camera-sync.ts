@@ -193,23 +193,39 @@ export function createFloorplanCameraSyncBridge({
         pendingNavigationPose = null
         return
       }
+      // Still deduped, so this only fires if the camera moved since the last
+      // publish. Catching up a consumer that ignored poses while unlinked is
+      // deliberately not done from here: pushing at this moment is unreliable,
+      // because React destroys every stale subscription before running any
+      // effect body, so a pose published from one effect can land on no
+      // listener at all. A consumer that chose to ignore poses pulls instead.
       if (latestCameraPose) publishCameraNavigationPose(latestCameraPose)
     },
   }
 }
 
-export function useFloorplanCameraSyncBridge() {
-  // The compass is portalled into the always-visible viewer area, so its
-  // orientation-only 2D pose must still reach the camera while the floorplan
-  // itself is hidden in 3D view.
+/**
+ * Runs the 2D/3D navigation bridge for as long as the caller is mounted.
+ *
+ * @param active Whether 2D poses should drive the 3D camera. The reverse feed
+ * is deliberately unconditional: the compass is portalled into the
+ * always-visible viewer area, so its needle has to keep tracking the camera
+ * even when the two views navigate independently.
+ */
+export function useFloorplanCameraSyncBridge(active = true) {
   const bridgeRef = useRef<FloorplanCameraSyncBridge | null>(null)
   if (!bridgeRef.current) {
     bridgeRef.current = createFloorplanCameraSyncBridge({
+      active,
       applyCameraPose: (pose) => emitter.emit('camera-controls:apply-pose', pose),
       publishNavigationPose: (pose) => liveCameraNavigation.publish(pose),
     })
   }
   const bridge = bridgeRef.current
+
+  useEffect(() => {
+    bridge.setActive(active)
+  }, [bridge, active])
 
   useEffect(() => subscribeCameraPose(bridge.receiveCameraPose), [bridge])
 

@@ -106,6 +106,41 @@ describe('floorplan camera sync', () => {
     expect(applied[0]?.position[2]).toBeCloseTo(20)
   })
 
+  test('holds 2D poses off the camera while unlinked', () => {
+    const applied: CameraPose[] = []
+    const bridge = createFloorplanCameraSyncBridge({
+      active: false,
+      applyCameraPose: (pose) => applied.push(pose),
+      publishNavigationPose: () => {},
+    })
+
+    bridge.receiveCameraPose(cameraPose)
+    bridge.receiveNavigationPose({
+      source: '2d',
+      revision: 1,
+      target: [10, 2, 20],
+      azimuth: Math.PI / 2,
+      viewWidth: 8,
+    })
+
+    expect(applied).toHaveLength(0)
+  })
+
+  test('keeps feeding the compass while unlinked', () => {
+    const published: Array<Omit<NavigationSyncPose, 'revision'>> = []
+    const bridge = createFloorplanCameraSyncBridge({
+      active: false,
+      applyCameraPose: () => {},
+      publishNavigationPose: (pose) => published.push(pose),
+    })
+
+    bridge.receiveCameraPose(cameraPoseAtAzimuth(0))
+    bridge.receiveCameraPose(cameraPoseAtAzimuth(Math.PI / 4))
+
+    expect(published).toHaveLength(2)
+    expect(published[1]?.azimuth).toBeCloseTo(Math.PI / 4)
+  })
+
   test('publishes sub-degree camera rotation for a real-time compass', () => {
     const published: Array<Omit<NavigationSyncPose, 'revision'>> = []
     const bridge = createFloorplanCameraSyncBridge({
