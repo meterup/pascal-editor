@@ -18,6 +18,10 @@ import { getMovingNode } from '../../store/use-interaction-scope'
 // about to snap into lights up.
 const PLACEMENT_REVEAL_RADIUS = 12
 
+// Opacity the lattice holds everywhere outside the cursor reveal, so the grid
+// reads as a ground reference at idle rather than only under the pointer.
+const IDLE_BASE_ALPHA = 0.4
+
 const UP = new Vector3(0, 1, 0)
 // PlaneGeometry faces +Z; this is the orientation that lays it flat (its normal
 // → world +Y), equivalent to the old `rotation-x={-π/2}`.
@@ -46,6 +50,7 @@ export const Grid = ({
   revealRadius?: number
 }) => {
   const isDark = useViewer((state) => getSceneTheme(state.sceneTheme).appearance === 'dark')
+  const showGrid = useViewer((state) => state.showGrid)
 
   // Use slightly lighter colors for dark themes' grid to make it apparent
   const effectiveCellColor = isDark ? '#555566' : cellColor
@@ -280,20 +285,26 @@ export const Grid = ({
       material.needsUpdate = true
     }
 
-    // The grid is a placement aid: a tight cursor patch (no always-on baseline)
-    // shown whenever the active context is in grid-snap mode — ANY armed
+    // The grid serves two jobs, and which one is active decides how it paints.
+    //
+    // As a placement aid it's a tight, brightened cursor patch with no baseline,
+    // shown whenever the active context is in grid-snap mode: ANY armed
     // draft/build tool (wall / slab / fence / ceiling / zone / column / MEP / …),
-    // a node move, or a reshape — and hidden in select/idle, paint, and non-grid
-    // (lines/off) modes. `isGridSnapActive()` already derives the snap context
-    // from the interaction scope OR the armed build tool and is true only when
-    // that context resolves to grid, so it IS the gate. (Previously this also
-    // required a ghost in flight, so a merely-armed draft tool showed nothing.)
+    // a node move, or a reshape. `isGridSnapActive()` already derives the snap
+    // context from the interaction scope OR the armed build tool and is true only
+    // when that context resolves to grid, so it IS that gate.
+    //
+    // Otherwise it's the ground reference the viewer's `showGrid` preference
+    // controls: the wider idle reveal over a constant baseline, unboosted. A
+    // viewer that never arms a tool (read-only hosts, embedded plan views) only
+    // ever sees this branch, and gating visibility on the snap context alone left
+    // those hosts with no grid at all and an inert Display toggle.
     const snapPatchVisible = isGridSnapActive()
-    revealRadiusUniform.value = PLACEMENT_REVEAL_RADIUS
-    baseAlphaUniform.value = 0
+    revealRadiusUniform.value = snapPatchVisible ? PLACEMENT_REVEAL_RADIUS : revealRadius
+    baseAlphaUniform.value = snapPatchVisible ? 0 : IDLE_BASE_ALPHA
     cellSizeUniform.value = useEditor.getState().gridSnapStep
-    patchAlphaUniform.value = 1.5
-    gridRef.current.visible = snapPatchVisible
+    patchAlphaUniform.value = snapPatchVisible ? 1.5 : 1
+    gridRef.current.visible = snapPatchVisible || showGrid
   })
 
   // Pass the geometry as a prop instead of a JSX child so the mesh
