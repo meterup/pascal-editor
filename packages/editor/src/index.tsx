@@ -29,7 +29,10 @@ export { BakeExporter } from './components/editor/bake-exporter'
 export { BakeThumbnail } from './components/editor/bake-thumbnail'
 export { FirstPersonControls } from './components/editor/first-person-controls'
 export { FloatingActionMenu as FloatingMenu } from './components/editor/floating-action-menu'
-export type { FloorplanBackgroundContext } from './components/editor/floorplan-panel'
+export type {
+  FloorplanBackgroundContext,
+  FloorplanPanelPalette,
+} from './components/editor/floorplan-panel'
 // Embed surface — the editor's real in-canvas affordances, so a host can mount
 // authentic selection handles, interactive build tools, and the mover on top
 // of a bare `<Viewer>` without the full `<Editor>` shell.

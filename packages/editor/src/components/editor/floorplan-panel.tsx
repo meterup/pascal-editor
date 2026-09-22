@@ -652,7 +652,16 @@ const REFERENCE_REGISTRY_KINDS = new Set<AnyNode['type']>([
   'elevator',
 ])
 
-type FloorplanPalette = {
+/**
+ * Every themed colour the 2D floor plan draws with, from the surface and grid
+ * through to selection, handle and snap-guide chrome.
+ *
+ * A superset of `FloorplanPalette` in `@pascal-app/core`: the slots that
+ * registry-driven kinds need are forwarded to them through
+ * `<FloorplanRenderProvider>`, so overriding one here reaches both the panel's
+ * own drawing and every kind's geometry.
+ */
+export type FloorplanPanelPalette = {
   surface: string
   minorGrid: string
   majorGrid: string
@@ -3273,7 +3282,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
 }: {
   majorGridPath: string
   minorGridPath: string
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   showGrid: boolean
 }) {
   if (!showGrid) {
@@ -3367,7 +3376,7 @@ function FloorplanReferenceScaleLine({
   end: WallPlanPoint
   isDraft?: boolean
   label: string
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   start: WallPlanPoint
   unitsPerPixel: number
 }) {
@@ -3456,7 +3465,7 @@ function FloorplanReferenceScaleLayer({
   draft: ReferenceScaleDraft | null
   guideUi: Record<string, GuideUiState>
   guides: GuideNode[]
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   unit: 'metric' | 'imperial'
   unitsPerPixel: number
 }) {
@@ -3501,7 +3510,7 @@ function FloorplanReferenceScaleDraftLine({
   unit,
   unitsPerPixel,
 }: {
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   start: WallPlanPoint
   unit: 'metric' | 'imperial'
   unitsPerPixel: number
@@ -3837,7 +3846,7 @@ const FloorplanSiteLayer = memo(function FloorplanSiteLayer({
 }: {
   dimmed: boolean
   isHighlighted: boolean
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   sitePolygon: SitePolygonEntry | null
 }) {
   if (!sitePolygon) {
@@ -3895,7 +3904,7 @@ const FloorplanSiteEdgeLabelLayer = memo(function FloorplanSiteEdgeLabelLayer({
 }: {
   labelBackground: string
   labelText: string
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   sceneRotationDeg: number
   shouldShow: boolean
   sitePolygon: SitePolygonEntry | null
@@ -4062,7 +4071,7 @@ const FloorplanPolygonHandleLayer = memo(function FloorplanPolygonHandleLayer({
     edgeIndex: number,
     event: ReactPointerEvent<SVGLineElement>,
   ) => void
-  palette: FloorplanPalette
+  palette: FloorplanPanelPalette
   unitsPerPixel: number
 }) {
   const vertexPointerDoubleClickRef = useRef<string | null>(null)
@@ -4958,10 +4967,12 @@ export function FloorplanPanel({
   compassHost,
   floorplanSceneSlot,
   floorplanBackgroundSlot,
+  floorplanPalette,
 }: {
   compassHost?: HTMLElement | null
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
+  floorplanPalette?: Partial<FloorplanPanelPalette>
 }) {
   useFloorplanCameraSyncBridge()
   const viewportHostRef = useRef<HTMLDivElement>(null)
@@ -6988,7 +6999,7 @@ export function FloorplanPanel({
     viewBox,
   ])
 
-  const palette = useMemo(
+  const basePalette = useMemo(
     () =>
       isDark
         ? {
@@ -7107,10 +7118,16 @@ export function FloorplanPanel({
           },
     [isDark],
   )
+  // Returns `basePalette` itself when there's no override, so the common case
+  // keeps a stable reference for the memoized layers keyed on it.
+  const palette = useMemo<FloorplanPanelPalette>(
+    () => (floorplanPalette ? { ...basePalette, ...floorplanPalette } : basePalette),
+    [basePalette, floorplanPalette],
+  )
   const wallSelectionHatchId = useMemo(() => `floorplan-wall-selection-hatch-${isDark}`, [isDark])
-  // Subset of the legacy palette surfaced to registry-driven kinds via
-  // <FloorplanRenderProvider>. Mirrors `FloorplanPalette` in `@pascal-app/
-  // core` — keep slot names + meanings in sync.
+  // Subset of the panel palette surfaced to registry-driven kinds via
+  // <FloorplanRenderProvider>. Mirrors `FloorplanPalette` in `@pascal-app/core`:
+  // keep slot names and meanings in sync.
   const floorplanRegistryPalette = useMemo<FloorplanRenderContextValue['palette']>(
     () => ({
       selectedStroke: palette.selectedStroke,
