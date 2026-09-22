@@ -51,10 +51,13 @@ export const Grid = ({
 }) => {
   const isDark = useViewer((state) => getSceneTheme(state.sceneTheme).appearance === 'dark')
   const showGrid = useViewer((state) => state.showGrid)
+  const themeGrid = useViewer((state) => getSceneTheme(state.sceneTheme).grid)
 
-  // Use slightly lighter colors for dark themes' grid to make it apparent
-  const effectiveCellColor = isDark ? '#555566' : cellColor
-  const effectiveSectionColor = isDark ? '#666677' : sectionColor
+  // Theme first, then the `appearance` defaults: slightly lighter lines for dark
+  // themes so the grid stays apparent.
+  const effectiveCellColor = themeGrid?.cell ?? (isDark ? '#555566' : cellColor)
+  const effectiveSectionColor = themeGrid?.section ?? (isDark ? '#666677' : sectionColor)
+  const idleBaseAlpha = themeGrid?.idleOpacity ?? IDLE_BASE_ALPHA
 
   const cursorPositionRef = useRef(new Vector2(0, 0))
   // Scratch for reading a moving node's world Y (surface elevation) each frame.
@@ -301,7 +304,7 @@ export const Grid = ({
     // those hosts with no grid at all and an inert Display toggle.
     const snapPatchVisible = isGridSnapActive()
     revealRadiusUniform.value = snapPatchVisible ? PLACEMENT_REVEAL_RADIUS : revealRadius
-    baseAlphaUniform.value = snapPatchVisible ? 0 : IDLE_BASE_ALPHA
+    baseAlphaUniform.value = snapPatchVisible ? 0 : idleBaseAlpha
     cellSizeUniform.value = useEditor.getState().gridSnapStep
     patchAlphaUniform.value = snapPatchVisible ? 1.5 : 1
     gridRef.current.visible = snapPatchVisible || showGrid
