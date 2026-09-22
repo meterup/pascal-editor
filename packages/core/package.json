@@ -1,6 +1,6 @@
 {
   "name": "@pascal-app/core",
-  "version": "1.0.0-beta.5",
+  "version": "0.0.0-snapshot-20260922140121",
   "description": "Core library for Pascal 3D building editor",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./plugin-nodes": {
+      "types": "./dist/schema/plugin-nodes.d.ts",
+      "import": "./dist/schema/plugin-nodes.js",
+      "default": "./dist/schema/plugin-nodes.js"
     },
     "./clone-scene-graph": {
       "types": "./dist/utils/clone-scene-graph.d.ts",

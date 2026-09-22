@@ -324,8 +324,12 @@ export {
   WindowType,
 } from './nodes/window'
 export { ZoneNode } from './nodes/zone'
+// `PluginNodes` itself is deliberately absent: it is only augmentable at
+// `@pascal-app/core/plugin-nodes`, and re-exporting it here would invite a
+// `declare module '@pascal-app/core/schema'` that silently widens nothing.
+export type { PluginNode, PluginNodeType } from './plugin-nodes'
 export { generateSceneMaterialId, SceneMaterial, type SceneMaterialId } from './scene-material'
 export { MAX_TERRAIN_SIDE, TerrainData } from './terrain'
-export type { AnyNodeId, AnyNodeType } from './types'
+export type { AnyNodeId, AnyNodeType, BuiltinNode } from './types'
 // Union types
 export { AnyNode } from './types'

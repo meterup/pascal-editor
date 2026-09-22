@@ -1,6 +1,6 @@
 {
   "name": "ifc-converter-app",
-  "version": "0.1.0",
+  "version": "0.0.0-snapshot-20260922140121",
   "type": "module",
   "private": true,
   "scripts": {

@@ -1,6 +1,6 @@
 {
   "name": "@pascal-app/editor",
-  "version": "1.0.0-beta.5",
+  "version": "0.0.0-snapshot-20260922140121",
   "description": "Pascal building editor component",
   "type": "module",
   "exports": {
@@ -15,7 +15,11 @@
       "default": "./src/components/ui/item-catalog/catalog-items.tsx"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json --watch",
