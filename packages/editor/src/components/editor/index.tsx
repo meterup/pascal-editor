@@ -70,7 +70,7 @@ import { FirstPersonControls, FirstPersonOverlay } from './first-person-controls
 import { FloatingActionMenu } from './floating-action-menu'
 import { FloatingBuildingActionMenu } from './floating-building-action-menu'
 import { FloorplanModeCoordinator } from './floorplan-mode-coordinator'
-import { FloorplanPanel } from './floorplan-panel'
+import { type FloorplanBackgroundContext, FloorplanPanel } from './floorplan-panel'
 import { Grid } from './grid'
 import { GroupFloatingActionMenu } from './group-floating-action-menu'
 import { GroupRotateHandle } from './group-rotate-handle'
@@ -172,6 +172,11 @@ export interface EditorProps {
   viewerSceneSlot?: ReactNode
   /** Host-owned SVG content mounted in the transformed floor-plan scene. */
   floorplanSceneSlot?: ReactNode
+  /**
+   * Host-owned SVG backdrop for the floor plan, painted under the grid and all
+   * geometry. Receives the scene extent, scale, and rotation to size itself by.
+   */
+  floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
 
   projectId?: string | null
 
@@ -973,6 +978,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   onThumbnailCapture,
   viewerSceneSlot,
   floorplanSceneSlot,
+  floorplanBackgroundSlot,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -986,6 +992,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   onThumbnailCapture?: (blob: Blob, cameraData: SnapshotCameraData) => void
   viewerSceneSlot?: ReactNode
   floorplanSceneSlot?: ReactNode
+  floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1064,7 +1071,11 @@ const ViewerCanvas = memo(function ViewerCanvas({
           }}
         >
           <div className="h-full w-full overflow-hidden">
-            <FloorplanPanel compassHost={viewerAreaEl} floorplanSceneSlot={floorplanSceneSlot} />
+            <FloorplanPanel
+              compassHost={viewerAreaEl}
+              floorplanBackgroundSlot={floorplanBackgroundSlot}
+              floorplanSceneSlot={floorplanSceneSlot}
+            />
           </div>
           {viewMode === 'split' && (
             <div
@@ -1191,6 +1202,7 @@ export default function Editor({
   multiSelectionFooter,
   viewerSceneSlot,
   floorplanSceneSlot,
+  floorplanBackgroundSlot,
   projectId,
   onLoad,
   onSave,
@@ -1434,6 +1446,7 @@ export default function Editor({
       showLoader={showLoader}
       viewerSceneSlot={viewerSceneSlot}
       floorplanSceneSlot={floorplanSceneSlot}
+      floorplanBackgroundSlot={floorplanBackgroundSlot}
     />
   )
 
