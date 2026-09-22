@@ -219,6 +219,11 @@ export type FloorplanPalette = {
   measurementStroke: string
   measurementLabelBackground: string
   measurementLabelText: string
+  /**
+   * Snap-guide chrome: the alignment lines, their end caps, and the distance
+   * pills drawn while dragging. Red in the legacy palette, matching Figma.
+   */
+  alignmentGuideStroke: string
 }
 
 // ─── FloorplanGeometry ───────────────────────────────────────────────

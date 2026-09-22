@@ -46,7 +46,8 @@ export const FloorplanAlignmentGuideLayer = memo(function FloorplanAlignmentGuid
   const pillRadius = 3 * upp
   const pillOffset = 8 * upp
 
-  const color = '#ef4444' // tailwind red-500 — matches Figma's snap red
+  // Fallback matches the palette default, for the no-provider case above.
+  const color = ctx?.palette.alignmentGuideStroke ?? '#ef4444'
 
   return (
     <g pointerEvents="none">

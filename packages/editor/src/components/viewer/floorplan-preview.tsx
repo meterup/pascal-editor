@@ -79,6 +79,7 @@ const READ_ONLY_PALETTE: FloorplanPalette = {
   measurementStroke: '#475569',
   measurementLabelBackground: '#ffffff',
   measurementLabelText: '#0f172a',
+  alignmentGuideStroke: '#ef4444',
 }
 const EMPTY_PREVIEW_NODES: Record<string, AnyNode> = {}
 const EMPTY_INSTALLED_PLUGINS: readonly string[] = []
