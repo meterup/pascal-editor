@@ -4936,6 +4936,19 @@ const EMPTY_DRAFT_ANCHOR_POINTS: Array<{ x: number; y: number; isPrimary: boolea
 /** World-space half-length of the 2D draft axis guide lines (matches the 3D tools' 2000 m guides). */
 const DRAFT_AXIS_GUIDE_EXTENT = 1000
 
+/** Scene geometry handed to `floorplanBackgroundSlot` so a host can size its backdrop. */
+export type FloorplanBackgroundContext = {
+  /**
+   * Scene-space extent to cover. Already inflated for the current rotation, so
+   * content sized to it cannot expose a corner at any angle.
+   */
+  bounds: { minX: number; maxX: number; minY: number; maxY: number }
+  /** Scene units per screen pixel, for holding detail at a fixed size across zoom. */
+  unitsPerPixel: number
+  /** Rotation the scene group is drawn at, in degrees. */
+  rotationDeg: number
+}
+
 export function FloorplanPanel({
   /**
    * Element to portal the compass button into. The 2D/3D navigation poses stay
@@ -4945,9 +4958,11 @@ export function FloorplanPanel({
    */
   compassHost,
   floorplanSceneSlot,
+  floorplanBackgroundSlot,
 }: {
   compassHost?: HTMLElement | null
   floorplanSceneSlot?: ReactNode
+  floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
 }) {
   useFloorplanCameraSyncBridge()
   const viewportHostRef = useRef<HTMLDivElement>(null)
@@ -11385,6 +11400,16 @@ export function FloorplanPanel({
                 floorplanSceneRotationDeg !== 0 ? `rotate(${floorplanSceneRotationDeg})` : undefined
               }
             >
+              {/* First child, so a host backdrop paints under the grid and every
+                  geometry layer. Inside this group it inherits the scene's pan and
+                  rotation, and `gridBounds` is the same rotation-inflated extent
+                  the grid spans, so a backdrop sized to it never clips. */}
+              {floorplanBackgroundSlot?.({
+                bounds: gridBounds,
+                unitsPerPixel: floorplanUnitsPerPixel,
+                rotationDeg: floorplanSceneRotationDeg,
+              })}
+
               <FloorplanGridLayer
                 majorGridPath={majorGridPath}
                 minorGridPath={minorGridPath}
