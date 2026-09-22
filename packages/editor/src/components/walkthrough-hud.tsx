@@ -36,7 +36,7 @@ export function WalkthroughHud({
   )
 
   return (
-    <div className="dark pointer-events-none absolute inset-0 z-30 text-foreground">
+    <div className="pointer-events-none absolute inset-0 z-30 text-foreground">
       <div className="absolute top-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
         {floorLabel && (
           <div className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">

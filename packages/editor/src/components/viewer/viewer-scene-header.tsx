@@ -94,7 +94,7 @@ export const ViewerSceneHeader = ({
   }
 
   return (
-    <div className="dark absolute top-4 left-4 z-20 flex flex-col gap-3 text-foreground">
+    <div className="absolute top-4 left-4 z-20 flex flex-col gap-3 text-foreground">
       <div className="corner-smooth pointer-events-auto flex min-w-[200px] flex-col overflow-hidden rounded-2xl border border-border/40 bg-background/95 shadow-elevation-4 backdrop-blur-xl transition-colors duration-200 ease-out">
         {/* Project info + back */}
         <div className="flex items-center gap-3 px-3 py-2.5">

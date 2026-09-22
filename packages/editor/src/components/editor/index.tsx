@@ -207,6 +207,16 @@ export interface EditorProps {
    */
   disablePostFx?: boolean
 
+  /**
+   * Colour mode for the editor's own chrome. Applies (or clears) Tailwind's
+   * `dark` class on `document.body`, so it reaches portalled surfaces like
+   * dialogs, sheets and popovers too.
+   *
+   * Defaults to `'dark'`. Pass `'inherit'` to leave the class untouched, for
+   * hosts that embed the editor in a page whose colour mode they own.
+   */
+  appearance?: 'light' | 'dark' | 'inherit'
+
   // Version preview overlays (rendered by host app)
   sidebarOverlay?: ReactNode
   viewerBanner?: ReactNode
@@ -1164,7 +1174,7 @@ function PreviewStage({
   const stageModes = hasFloorplan && !isFirstPersonMode ? undefined : (['3d'] as const)
 
   return (
-    <div className="dark relative h-full w-full overflow-hidden bg-neutral-100 text-foreground">
+    <div className="relative h-full w-full overflow-hidden bg-neutral-100 text-foreground">
       {isFirstPersonMode ? (
         <FirstPersonOverlay onExit={() => useEditor.getState().setFirstPersonMode(false)} />
       ) : (
@@ -1214,6 +1224,7 @@ export default function Editor({
   onLoaderChange,
   onThumbnailCapture,
   disablePostFx = false,
+  appearance = 'dark',
   sidebarOverlay,
   viewerBanner,
   settingsPanelProps,
@@ -1339,11 +1350,15 @@ export default function Editor({
   }, [isPreviewMode])
 
   useEffect(() => {
-    document.body.classList.add('dark')
+    if (appearance === 'inherit') return
+    const shouldBeDark = appearance === 'dark'
+    const wasDark = document.body.classList.contains('dark')
+    if (wasDark === shouldBeDark) return
+    document.body.classList.toggle('dark', shouldBeDark)
     return () => {
-      document.body.classList.remove('dark')
+      document.body.classList.toggle('dark', wasDark)
     }
-  }, [])
+  }, [appearance])
 
   const handleSceneReadyChange = useCallback((ready: boolean) => {
     setIsViewerSceneReady(ready)
@@ -1574,7 +1589,7 @@ export default function Editor({
   const overlayLeft = LAYOUT_PADDING + (isSidebarCollapsed ? 8 : sidebarWidth) + LAYOUT_GAP
 
   return (
-    <div className="dark flex h-full w-full gap-3 bg-neutral-100 p-3 text-foreground">
+    <div className="flex h-full w-full gap-3 bg-neutral-100 p-3 text-foreground">
       <FloorplanModeCoordinator />
       {showLoader && (
         <div className="fixed inset-0 z-60">
