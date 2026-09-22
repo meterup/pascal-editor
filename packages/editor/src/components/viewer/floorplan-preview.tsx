@@ -44,7 +44,11 @@ import {
   setFloorplanCompassRotation,
 } from '../editor/floorplan-navigation-presentation'
 import { FloorplanGeometryRenderer } from '../editor-2d/renderers/floorplan-geometry-renderer'
-import { FloorplanCompassButton } from './floorplan-compass-button'
+import {
+  FloorplanCompassButton,
+  type FloorplanCompassContext,
+  type FloorplanCompassSlot,
+} from './floorplan-compass-button'
 import {
   type FloorplanBounds,
   type FloorplanViewBox,
@@ -97,6 +101,7 @@ export type FloorplanPreviewProps = {
   onLevelChange?: (levelId: string) => void
   scene?: FloorplanPreviewScene | null
   showCompass?: boolean
+  floorplanCompassSlot?: FloorplanCompassSlot
   showLevelSelector?: boolean
   synchronizeNavigation?: boolean
 }
@@ -319,6 +324,7 @@ export function FloorplanPreview({
   onLevelChange,
   scene,
   showCompass = true,
+  floorplanCompassSlot,
   showLevelSelector = true,
   synchronizeNavigation = false,
 }: FloorplanPreviewProps) {
@@ -869,11 +875,18 @@ export function FloorplanPreview({
     viewBox.height / Math.max(viewportSize.height, 1),
   )
 
-  const compassControl = (
+  const compassContext: FloorplanCompassContext = {
+    northRotationDeg: rotationDeg,
+    alignToNorth,
+    needleRef: compassNeedleRef,
+  }
+  const compassControl = floorplanCompassSlot ? (
+    floorplanCompassSlot(compassContext)
+  ) : (
     <FloorplanCompassButton
-      needleRef={compassNeedleRef}
-      northRotationDeg={rotationDeg}
-      onAlignNorth={alignToNorth}
+      needleRef={compassContext.needleRef}
+      northRotationDeg={compassContext.northRotationDeg}
+      onAlignNorth={compassContext.alignToNorth}
     />
   )
 

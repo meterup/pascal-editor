@@ -59,6 +59,7 @@ import { SettingsPanel, type SettingsPanelProps } from '../ui/sidebar/panels/set
 import { SitePanel, type SitePanelProps } from '../ui/sidebar/panels/site-panel'
 import type { SidebarTab } from '../ui/sidebar/tab-bar'
 import { useHostPanels } from '../ui/sidebar/use-plugin-panels'
+import type { FloorplanCompassSlot } from '../viewer/floorplan-compass-button'
 import { ViewerStage } from '../viewer/viewer-stage'
 import type { ViewerStageMode } from '../viewer/viewer-stage-modes'
 import { CustomCameraControls } from './custom-camera-controls'
@@ -205,6 +206,13 @@ export interface EditorProps {
    * onto the camera.
    */
   floorplanNavigationLink?: boolean
+  /**
+   * Replaces the built-in floor-plan compass. Receives the heading, an
+   * align-to-north callback, and the needle ref the live camera stream writes
+   * to, so a host control can match the built-in behaviour rather than
+   * approximate it. Return `null` for no compass.
+   */
+  floorplanCompassSlot?: FloorplanCompassSlot
 
   projectId?: string | null
 
@@ -1020,6 +1028,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanPalette,
   floorplanNavigationInput,
   floorplanNavigationLink,
+  floorplanCompassSlot,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -1037,6 +1046,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanPalette?: Partial<FloorplanPanelPalette>
   floorplanNavigationInput?: FloorplanNavigationInput
   floorplanNavigationLink?: boolean
+  floorplanCompassSlot?: FloorplanCompassSlot
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1119,6 +1129,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
               compassHost={viewerAreaEl}
               floorplanBackgroundSlot={floorplanBackgroundSlot}
               floorplanNavigationInput={floorplanNavigationInput}
+              floorplanCompassSlot={floorplanCompassSlot}
               floorplanNavigationLink={floorplanNavigationLink}
               floorplanPalette={floorplanPalette}
               floorplanSceneSlot={floorplanSceneSlot}
@@ -1188,12 +1199,14 @@ function PreviewStage({
   onModeChange,
   showLoader,
   viewerContent,
+  floorplanCompassSlot,
 }: {
   isFirstPersonMode: boolean
   mode: ViewerStageMode
   onModeChange: (mode: ViewerStageMode) => void
   showLoader: boolean
   viewerContent: ReactNode
+  floorplanCompassSlot?: FloorplanCompassSlot
 }) {
   const hasFloorplan = useScene((state) =>
     Object.values(state.nodes).some((node) => node.type === 'level'),
@@ -1226,6 +1239,7 @@ function PreviewStage({
         mode={stageMode}
         modes={stageModes}
         onModeChange={handleModeChange}
+        floorplanCompassSlot={floorplanCompassSlot}
         showCompass={hasFloorplan && !isFirstPersonMode}
         showSwitcher={hasFloorplan && !isFirstPersonMode}
         switcherClassName={`${PREVIEW_STAGE_SWITCHER_POSITION} ${showLoader ? 'z-[70]' : ''}`}
@@ -1253,6 +1267,7 @@ export default function Editor({
   floorplanPalette,
   floorplanNavigationInput,
   floorplanNavigationLink,
+  floorplanCompassSlot,
   projectId,
   onLoad,
   onSave,
@@ -1505,6 +1520,7 @@ export default function Editor({
       floorplanSceneSlot={floorplanSceneSlot}
       floorplanBackgroundSlot={floorplanBackgroundSlot}
       floorplanNavigationInput={floorplanNavigationInput}
+      floorplanCompassSlot={floorplanCompassSlot}
       floorplanNavigationLink={floorplanNavigationLink}
       floorplanPalette={floorplanPalette}
     />
@@ -1573,6 +1589,7 @@ export default function Editor({
             mode={previewStageMode}
             onModeChange={setPreviewStageMode}
             showLoader={showLoader}
+            floorplanCompassSlot={floorplanCompassSlot}
             viewerContent={previewViewerContent}
           />
         ) : (
@@ -1646,6 +1663,7 @@ export default function Editor({
           mode={previewStageMode}
           onModeChange={setPreviewStageMode}
           showLoader={showLoader}
+          floorplanCompassSlot={floorplanCompassSlot}
           viewerContent={previewViewerContent}
         />
       ) : (
