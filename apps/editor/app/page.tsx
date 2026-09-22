@@ -4,7 +4,13 @@ import { Editor, ItemsPanel } from '@pascal-app/editor'
 import { Hammer, Layers, Package, Settings } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
+import {
+  NAVIGATION_PLAYGROUND_DEFAULTS,
+  NavigationPlayground,
+  TINTED_FLOORPLAN_PALETTE,
+} from '@/components/navigation-playground'
 import {
   CommunityViewerToolbarLeft,
   CommunityViewerToolbarRight,
@@ -87,6 +93,8 @@ const SIDEBAR_TABS = [
 const PROJECT_ID = 'local-editor'
 
 export default function Home() {
+  const [playground, setPlayground] = useState(NAVIGATION_PLAYGROUND_DEFAULTS)
+
   return (
     <div className="relative h-screen w-screen">
       {PROJECT_ID === 'local-editor' && (
@@ -105,12 +113,17 @@ export default function Home() {
         </div>
       )}
       <Editor
+        appearance={playground.appearance}
+        floorplanNavigationInput={playground.navigationInput}
+        floorplanNavigationLink={playground.navigationLink}
+        floorplanPalette={playground.tintPalette ? TINTED_FLOORPLAN_PALETTE : undefined}
         layoutVersion="v2"
         projectId={PROJECT_ID}
         sidebarTabs={SIDEBAR_TABS}
         viewerToolbarLeft={<CommunityViewerToolbarLeft />}
         viewerToolbarRight={<CommunityViewerToolbarRight />}
       />
+      <NavigationPlayground onChange={setPlayground} state={playground} />
     </div>
   )
 }

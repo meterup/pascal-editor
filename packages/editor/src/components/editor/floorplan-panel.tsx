@@ -98,6 +98,7 @@ import { SITE_BOUNDARY_DRAG_LABEL, siteBoundaryHandlesEnabled } from '../../lib/
 import { resolveSlabPlanPointSnap } from '../../lib/slab-plan-snap'
 import { cn } from '../../lib/utils'
 import { snapBuildingLocalToWorldGrid } from '../../lib/world-grid-snap'
+import { cameraPoseStore } from '../../store/camera-pose-store'
 import { subscribeNavigationSyncPose } from '../../store/navigation-sync-pose-store'
 import useAlignmentGuides from '../../store/use-alignment-guides'
 import type { GuideUiState, NavigationSyncPose } from '../../store/use-editor'
@@ -198,6 +199,7 @@ import { PALETTE_COLORS } from '../ui/primitives/color-dot'
 import { FloorplanCompassButton } from '../viewer/floorplan-compass-button'
 import { resolveFloorplanBackgroundSelection } from './floorplan-background-selection'
 import {
+  cameraPoseToFloorplanNavigationPose,
   subscribeFloorplanCameraNavigation,
   useFloorplanCameraSyncBridge,
 } from './floorplan-camera-sync'
@@ -4983,15 +4985,18 @@ export function FloorplanPanel({
   floorplanBackgroundSlot,
   floorplanPalette,
   floorplanNavigationInput = 'builtin',
+  floorplanNavigationLink = true,
 }: {
   compassHost?: HTMLElement | null
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   floorplanPalette?: Partial<FloorplanPanelPalette>
   floorplanNavigationInput?: FloorplanNavigationInput
+  floorplanNavigationLink?: boolean
 }) {
   const hostOwnsNavigation = floorplanNavigationInput === 'host'
-  useFloorplanCameraSyncBridge()
+  const navigationLinked = floorplanNavigationLink
+  useFloorplanCameraSyncBridge(navigationLinked)
   const viewportHostRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const floorplanBackgroundRef = useRef<SVGRectElement>(null)
@@ -6649,15 +6654,65 @@ export function FloorplanPanel({
     }
 
     latestNavigationSyncPoseRef.current = pose
-    if (drivesFloorplanView(pose.source)) {
+    // Same rule as the live receiver below, so opening the panel while
+    // unlinked doesn't snap it onto the camera.
+    if (pose.source === 'host' || (pose.source === '3d' && navigationLinked)) {
       syncFloorplanViewportToNavigationPose(pose)
     }
-  }, [syncFloorplanViewportToNavigationPose, isFloorplanOpen])
+  }, [navigationLinked, syncFloorplanViewportToNavigationPose, isFloorplanOpen])
+
+  // Re-linking snaps this view back onto the camera. The camera's pose is
+  // pulled rather than waited for, because the bridge would have to push it
+  // from an effect, and React destroys every stale subscription before running
+  // any effect body: a pose published at that instant reaches no listener.
+  const relinkRevisionRef = useRef(0)
+  useEffect(() => {
+    if (!(navigationLinked && isFloorplanOpen)) return
+    const cameraPose = cameraPoseStore.getState().pose
+    if (!cameraPose) return
+    const navigationPose = cameraPoseToFloorplanNavigationPose(cameraPose)
+    if (!navigationPose) return
+
+    relinkRevisionRef.current -= 1
+    syncFloorplanViewportToNavigationPose({
+      ...navigationPose,
+      // Negative and descending, so it can't collide with the positive
+      // revisions the live channels hand out.
+      revision: relinkRevisionRef.current,
+    })
+  }, [navigationLinked, isFloorplanOpen, syncFloorplanViewportToNavigationPose])
 
   useEffect(() => {
     if (isFloorplanOpen) return
     discardFloorplanNavigationSyncPresentation()
   }, [discardFloorplanNavigationSyncPresentation, isFloorplanOpen])
+
+  // The needle describes whichever view is on screen: the plan's rotation when
+  // the panel is open, the camera's heading when it isn't. Hand it over on
+  // every switch, because each source only writes on its own updates and a
+  // still camera sends nothing. Linked the two agree so this is invisible;
+  // unlinked they diverge, and without it the needle keeps showing the view
+  // you just left.
+  useEffect(() => {
+    if (isFloorplanOpen) {
+      setFloorplanCompassRotation(
+        compassNeedleRef.current,
+        latestFloorplanUserRotationDegRef.current,
+      )
+      return
+    }
+    const cameraPose = cameraPoseStore.getState().pose
+    if (!cameraPose) return
+    const navigationPose = cameraPoseToFloorplanNavigationPose(cameraPose)
+    if (!navigationPose) return
+    setFloorplanCompassRotation(
+      compassNeedleRef.current,
+      floorplanRotationFromCameraAzimuth(
+        navigationPose.azimuth,
+        latestFloorplanUserRotationDegRef.current,
+      ),
+    )
+  }, [isFloorplanOpen])
 
   useEffect(
     () => () => {
@@ -6724,7 +6779,12 @@ export function FloorplanPanel({
           // full floorplan SVG every camera frame. The live camera stream
           // owns the needle, so any local animation yields to it.
           cancelHiddenCompassAnimation()
-          latestFloorplanUserRotationDegRef.current = nextDeg
+          // The ref is the plan's own rotation, not just what the needle
+          // shows, so it may only follow the camera while the two are linked.
+          // Writing it while unlinked drifts it away from the viewport it is
+          // meant to describe, and align-to-north then works off a heading
+          // the plan never had.
+          if (navigationLinked) latestFloorplanUserRotationDegRef.current = nextDeg
           setFloorplanCompassRotation(compassNeedleRef.current, nextDeg)
         } else {
           animateHiddenCompassNeedle(nextDeg)
@@ -6732,13 +6792,17 @@ export function FloorplanPanel({
         return
       }
 
-      if (drivesFloorplanView(pose.source)) {
+      // Unlinked, the camera no longer moves this view, but a host pose still
+      // does: the host is driving the 2D view on purpose. The needle above is
+      // unaffected either way, so a hidden panel keeps tracking the camera.
+      if (pose.source === 'host' || (pose.source === '3d' && navigationLinked)) {
         syncFloorplanViewportToNavigationPose(pose)
       }
     },
     [
       animateHiddenCompassNeedle,
       cancelHiddenCompassAnimation,
+      navigationLinked,
       syncFloorplanViewportToNavigationPose,
     ],
   )
@@ -7439,6 +7503,42 @@ export function FloorplanPanel({
     },
     [buildingPosition, buildingRotationY, floorplanGridWorldY],
   )
+
+  // `navigationSyncPose` is only ever written as a side effect of navigating,
+  // so it starts null. That is fine for the built-in gestures, which work from
+  // their own refs, but a host navigating relative to the current view has
+  // nothing to read and no way to take the first step. Seed it once the
+  // viewport exists so the store describes the live 2D view.
+  //
+  // Only where the seed can't move anything on its own, though. It publishes a
+  // `'2d'` pose, which while linked drives the camera, and the plan's view
+  // width is its own fit rather than the camera's, so seeding unconditionally
+  // would rezoom the 3D view on mount. Unlinked the bridge is inactive, and
+  // host-owned input is an explicit opt-in, so both are safe.
+  //
+  // `viewBox` is in the dependencies as a re-render signal, not because the
+  // body reads it: the viewport lives in refs, which can't wake an effect, and
+  // on first mount they are still empty. Dropping it means never seeding.
+  const canSeedNavigationPose = hostOwnsNavigation || !navigationLinked
+  const hasSeededNavigationPoseRef = useRef(false)
+  useEffect(() => {
+    if (!canSeedNavigationPose || hasSeededNavigationPoseRef.current) return
+    if (useEditor.getState().navigationSyncPose) {
+      hasSeededNavigationPoseRef.current = true
+      return
+    }
+    const viewport = latestViewportRef.current ?? latestFittedViewportRef.current
+    if (!viewport) return
+
+    const userRotationDeg = latestFloorplanUserRotationDegRef.current
+    const sceneRotationDeg = FLOORPLAN_VIEW_ROTATION_DEG + userRotationDeg - buildingRotationDeg
+    const localCenter = rotateSvgPoint(
+      { x: viewport.centerX, y: viewport.centerY },
+      -sceneRotationDeg,
+    )
+    hasSeededNavigationPoseRef.current = true
+    publishFloorplanNavigationPose(localCenter, userRotationDeg, viewport.width)
+  }, [buildingRotationDeg, canSeedNavigationPose, publishFloorplanNavigationPose, viewBox])
 
   const alignFloorplanViewToNorth = useCallback(() => {
     if (!isFloorplanOpenRef.current) {
