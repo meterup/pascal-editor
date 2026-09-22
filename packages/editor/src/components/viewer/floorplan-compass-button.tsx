@@ -9,6 +9,31 @@ export type FloorplanCompassButtonProps = {
   needleRef?: React.RefObject<SVGSVGElement | null>
 }
 
+/** Everything the built-in compass is given, for hosts rendering their own. */
+export type FloorplanCompassContext = {
+  /** Heading of the view the compass describes, in degrees, 0 with north up. */
+  northRotationDeg: number
+  /** Turns the view to put north up. */
+  alignToNorth: () => void
+  /**
+   * Attach to the element that visually rotates, if you want the needle to
+   * stay smooth while the 2D panel is hidden. The live camera stream writes
+   * that element's transform directly, because re-rendering the floor plan
+   * every camera frame to move a needle is too expensive. Ignoring this ref
+   * still leaves a correct compass, just one that updates per commit rather
+   * than per frame.
+   */
+  needleRef: React.RefObject<SVGSVGElement | null>
+}
+
+/**
+ * Replaces the built-in compass. Return `null` for no compass at all.
+ *
+ * Receives the same values the built-in one renders from, so a host control
+ * can match its behaviour rather than approximate it.
+ */
+export type FloorplanCompassSlot = (context: FloorplanCompassContext) => React.ReactNode
+
 export function FloorplanCompassButton({
   northRotationDeg,
   onAlignNorth,

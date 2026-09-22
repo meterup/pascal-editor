@@ -13,6 +13,6 @@ space-pan modifier and the wheel and pinch listeners, leaving the host free to
 bind what it wants and drive the view with `'host'` poses through
 `useEditor.publishNavigationSyncPose`.
 
-Nothing else is affected: node interaction, selection, and the compass all
-still work. Space key-up stays unguarded so flipping modes mid-press can't
-leave the pan modifier stuck on.
+Nothing else is affected: node interaction, selection and the compass all still
+work. Space key-up stays unguarded so flipping modes mid-press can't leave the
+pan modifier stuck on.

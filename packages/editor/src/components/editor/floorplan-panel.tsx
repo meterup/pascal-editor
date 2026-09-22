@@ -196,7 +196,11 @@ import {
 } from '../tools/wall/wall-drafting'
 
 import { PALETTE_COLORS } from '../ui/primitives/color-dot'
-import { FloorplanCompassButton } from '../viewer/floorplan-compass-button'
+import {
+  FloorplanCompassButton,
+  type FloorplanCompassContext,
+  type FloorplanCompassSlot,
+} from '../viewer/floorplan-compass-button'
 import { resolveFloorplanBackgroundSelection } from './floorplan-background-selection'
 import {
   cameraPoseToFloorplanNavigationPose,
@@ -4942,6 +4946,7 @@ export function FloorplanPanel({
   floorplanPalette,
   floorplanNavigationInput = 'builtin',
   floorplanNavigationLink = true,
+  floorplanCompassSlot,
 }: {
   compassHost?: HTMLElement | null
   floorplanSceneSlot?: ReactNode
@@ -4949,6 +4954,7 @@ export function FloorplanPanel({
   floorplanPalette?: Partial<FloorplanPanelPalette>
   floorplanNavigationInput?: FloorplanNavigationInput
   floorplanNavigationLink?: boolean
+  floorplanCompassSlot?: FloorplanCompassSlot
 }) {
   const hostOwnsNavigation = floorplanNavigationInput === 'host'
   const navigationLinked = floorplanNavigationLink
@@ -11240,6 +11246,22 @@ export function FloorplanPanel({
   const referenceScaleHint = referenceScaleInputError
     ? null
     : referenceScaleLengthHint(referenceScaleValue, referenceScaleUnit)
+
+  const compassContext: FloorplanCompassContext = {
+    northRotationDeg: floorplanUserRotationDeg,
+    alignToNorth: alignFloorplanViewToNorth,
+    needleRef: compassNeedleRef,
+  }
+  const compassControl = floorplanCompassSlot ? (
+    floorplanCompassSlot(compassContext)
+  ) : (
+    <FloorplanCompassButton
+      needleRef={compassContext.needleRef}
+      northRotationDeg={compassContext.northRotationDeg}
+      onAlignNorth={compassContext.alignToNorth}
+    />
+  )
+
   return (
     <div
       className="pointer-events-auto flex h-full w-full flex-col overflow-hidden bg-background/95"
@@ -11286,22 +11308,7 @@ export function FloorplanPanel({
         <FloorplanGroupActionMenu />
 
         {(levelNode?.type === 'level' || hasAmbientBuildingLevel) &&
-          (compassHost ? (
-            createPortal(
-              <FloorplanCompassButton
-                needleRef={compassNeedleRef}
-                northRotationDeg={floorplanUserRotationDeg}
-                onAlignNorth={alignFloorplanViewToNorth}
-              />,
-              compassHost,
-            )
-          ) : (
-            <FloorplanCompassButton
-              needleRef={compassNeedleRef}
-              northRotationDeg={floorplanUserRotationDeg}
-              onAlignNorth={alignFloorplanViewToNorth}
-            />
-          ))}
+          (compassHost ? createPortal(compassControl, compassHost) : compassControl)}
 
         {referenceScaleDraft && (
           <div className="pointer-events-none absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-md border bg-background/95 px-3 py-2 text-center text-sm shadow-sm">

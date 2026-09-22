@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '../../lib/utils'
+import type { FloorplanCompassSlot } from './floorplan-compass-button'
 import { FloorplanPreview, type FloorplanPreviewScene } from './floorplan-preview'
 import {
   normalizeViewerStageModes,
@@ -30,6 +31,7 @@ export type ViewerStageProps = {
   onModeChange?: (mode: ViewerStageMode) => void
   scene?: FloorplanPreviewScene | null
   showCompass?: boolean
+  floorplanCompassSlot?: FloorplanCompassSlot
   showLevelSelector?: boolean
   showSwitcher?: boolean
   switcherClassName?: string
@@ -77,6 +79,7 @@ export function ViewerStage({
   onModeChange,
   scene,
   showCompass = true,
+  floorplanCompassSlot,
   showLevelSelector = true,
   showSwitcher = true,
   switcherClassName,
@@ -207,6 +210,7 @@ export function ViewerStage({
             navigationVisible={activeMode !== '3d'}
             onLevelChange={chooseLevel}
             scene={scene}
+            floorplanCompassSlot={floorplanCompassSlot}
             showCompass={showCompass}
             showLevelSelector={showLevelSelector}
             synchronizeNavigation={synchronizeNavigation}

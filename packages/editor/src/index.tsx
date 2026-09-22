@@ -290,6 +290,10 @@ export {
   SnapTargetBadge,
   SnapTargetIcon,
 } from './components/ui/snap-target-badge'
+export type {
+  FloorplanCompassContext,
+  FloorplanCompassSlot,
+} from './components/viewer/floorplan-compass-button'
 export {
   FloorplanCompassButton,
   type FloorplanCompassButtonProps,
