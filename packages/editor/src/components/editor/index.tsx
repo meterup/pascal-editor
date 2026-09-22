@@ -78,7 +78,11 @@ import { FirstPersonControls, FirstPersonOverlay } from './first-person-controls
 import { FloatingActionMenu } from './floating-action-menu'
 import { FloatingBuildingActionMenu } from './floating-building-action-menu'
 import { FloorplanModeCoordinator } from './floorplan-mode-coordinator'
-import { type FloorplanBackgroundContext, FloorplanPanel } from './floorplan-panel'
+import {
+  type FloorplanBackgroundContext,
+  FloorplanPanel,
+  type FloorplanPanelPalette,
+} from './floorplan-panel'
 import { Grid } from './grid'
 import { GroupFloatingActionMenu } from './group-floating-action-menu'
 import { GroupRotateHandle } from './group-rotate-handle'
@@ -185,6 +189,14 @@ export interface EditorProps {
    * geometry. Receives the scene extent, scale, and rotation to size itself by.
    */
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
+  /**
+   * Overrides for the 2D floor plan's themed colours, merged over the built-in
+   * light or dark palette. Omitted slots keep their defaults.
+   *
+   * Hoist or memoize this: it is a render dependency of the palette the 2D
+   * layers are keyed on, so a fresh object each render costs their memoization.
+   */
+  floorplanPalette?: Partial<FloorplanPanelPalette>
 
   projectId?: string | null
 
@@ -997,6 +1009,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   viewerSceneSlot,
   floorplanSceneSlot,
   floorplanBackgroundSlot,
+  floorplanPalette,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -1011,6 +1024,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   viewerSceneSlot?: ReactNode
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
+  floorplanPalette?: Partial<FloorplanPanelPalette>
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1092,6 +1106,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
             <FloorplanPanel
               compassHost={viewerAreaEl}
               floorplanBackgroundSlot={floorplanBackgroundSlot}
+              floorplanPalette={floorplanPalette}
               floorplanSceneSlot={floorplanSceneSlot}
             />
           </div>
@@ -1221,6 +1236,7 @@ export default function Editor({
   viewerSceneSlot,
   floorplanSceneSlot,
   floorplanBackgroundSlot,
+  floorplanPalette,
   projectId,
   onLoad,
   onSave,
@@ -1490,6 +1506,7 @@ export default function Editor({
       viewerSceneSlot={viewerSceneSlot}
       floorplanSceneSlot={floorplanSceneSlot}
       floorplanBackgroundSlot={floorplanBackgroundSlot}
+      floorplanPalette={floorplanPalette}
     />
   )
 
