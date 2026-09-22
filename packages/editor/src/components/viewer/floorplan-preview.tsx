@@ -591,7 +591,8 @@ export function FloorplanPreview({
     }
     const unsubscribeCamera = subscribeFloorplanCameraNavigation(receivePose)
     const unsubscribeStored = subscribeNavigationSyncPose((pose) => {
-      if (pose.source === '2d' && !navigationVisible) receivePose(pose)
+      // `'3d'` poses already arrive on the camera channel above.
+      if (pose.source !== '3d' && !navigationVisible) receivePose(pose)
     })
     return () => {
       unsubscribeCamera()

@@ -102,6 +102,7 @@ import { subscribeNavigationSyncPose } from '../../store/navigation-sync-pose-st
 import useAlignmentGuides from '../../store/use-alignment-guides'
 import type { GuideUiState, NavigationSyncPose } from '../../store/use-editor'
 import useEditor, {
+  drivesFloorplanView,
   isAngleSnapActive,
   isMagneticSnapActive,
   selectSiteFloorplanContext,
@@ -6632,7 +6633,7 @@ export function FloorplanPanel({
     }
 
     latestNavigationSyncPoseRef.current = pose
-    if (pose.source === '3d') {
+    if (drivesFloorplanView(pose.source)) {
       syncFloorplanViewportToNavigationPose(pose)
     }
   }, [syncFloorplanViewportToNavigationPose, isFloorplanOpen])
@@ -6701,7 +6702,7 @@ export function FloorplanPanel({
           pose.azimuth,
           latestFloorplanUserRotationDegRef.current,
         )
-        if (pose.source === '3d') {
+        if (drivesFloorplanView(pose.source)) {
           // Panel hidden — drive the compass needle imperatively without
           // triggering React state (setViewport) that would re-render the
           // full floorplan SVG every camera frame. The live camera stream
@@ -6715,7 +6716,7 @@ export function FloorplanPanel({
         return
       }
 
-      if (pose.source === '3d') {
+      if (drivesFloorplanView(pose.source)) {
         syncFloorplanViewportToNavigationPose(pose)
       }
     },
@@ -6733,7 +6734,9 @@ export function FloorplanPanel({
 
   useEffect(() => {
     const receiveStoredNavigationPose = (pose: NavigationSyncPose | null) => {
-      if (pose?.source === '2d') {
+      // The camera channel above already delivers `'3d'` poses; this picks up
+      // the rest, meaning our own align-to-north and anything host-published.
+      if (pose && pose.source !== '3d') {
         receiveFloorplanNavigationPose(pose)
       }
     }

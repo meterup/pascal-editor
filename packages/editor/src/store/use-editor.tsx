@@ -179,7 +179,12 @@ export type StructureLayer = 'zones' | 'elements'
 export type FloorplanSelectionTool = 'click' | 'marquee'
 export type GridSnapStep = 0.5 | 0.25 | 0.1 | 0.05
 
-export type NavigationSyncSource = '2d' | '3d'
+/**
+ * Which view authored a navigation pose. `'host'` marks poses published by the
+ * embedding application rather than by either of the editor's own views, so
+ * both of them apply it.
+ */
+export type NavigationSyncSource = '2d' | '3d' | 'host'
 
 export type NavigationSyncPose = {
   source: NavigationSyncSource
@@ -190,6 +195,16 @@ export type NavigationSyncPose = {
 }
 
 export type NavigationSyncPoseInput = Omit<NavigationSyncPose, 'revision'>
+
+// A view applies every pose except the ones it published itself, or it fights
+// its own output. Written as predicates because the set of sources is open:
+// adding `'host'` had to reach every consumer, and the next one will too.
+
+/** Whether a pose should move the 2D floor-plan view. */
+export const drivesFloorplanView = (source: NavigationSyncSource): boolean => source !== '2d'
+
+/** Whether a pose should move the 3D camera. */
+export const drivesCamera = (source: NavigationSyncSource): boolean => source !== '3d'
 
 // Combined tool type. Known literals keep autocomplete; the `(string & {})`
 // arm lets plugin-contributed tool ids (e.g. `'trees:tree'`) typecheck without

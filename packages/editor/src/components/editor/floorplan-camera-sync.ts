@@ -4,7 +4,11 @@ import { type CameraPose, emitter } from '@pascal-app/core'
 import { useEffect, useRef } from 'react'
 import { subscribeCameraPose } from '../../store/camera-pose-store'
 import { subscribeNavigationSyncPose } from '../../store/navigation-sync-pose-store'
-import type { NavigationSyncPose, NavigationSyncPoseInput } from '../../store/use-editor'
+import {
+  drivesCamera,
+  type NavigationSyncPose,
+  type NavigationSyncPoseInput,
+} from '../../store/use-editor'
 
 const POSITION_EPSILON = 0.001
 const AZIMUTH_EPSILON = 1e-4
@@ -172,7 +176,7 @@ export function createFloorplanCameraSyncBridge({
     receiveNavigationPose: (pose) => {
       if (
         !active ||
-        pose?.source !== '2d' ||
+        !(pose && drivesCamera(pose.source)) ||
         pose.revision === lastAppliedNavigationRevision ||
         pose.revision === pendingNavigationPose?.revision
       ) {

@@ -587,6 +587,9 @@ export {
 export type {
   CaptureMode,
   FloorplanSelectionTool,
+  NavigationSyncPose,
+  NavigationSyncPoseInput,
+  NavigationSyncSource,
   SnapshotCropMode,
   SnapshotStandardAspect,
   SplitOrientation,
@@ -597,6 +600,8 @@ export type {
 } from './store/use-editor'
 export {
   default as useEditor,
+  drivesCamera,
+  drivesFloorplanView,
   getActiveContinuationContext,
   getContinuation,
   isAlignmentGuideActive,
