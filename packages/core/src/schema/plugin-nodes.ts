@@ -46,7 +46,13 @@ import type { BaseNode } from './base'
  *   against, which `setPluginDiscovery` permits, cannot appear in any union and
  *   stay plain `string` by necessity.
  */
-export type PluginNodes = {}
+// Must stay an `interface`, and must stay empty: hosts fill it by declaration
+// merging, which works on interfaces only. Taking `noEmptyInterface`'s "safe"
+// fix to `type PluginNodes = {}` turns every augmentation into a redeclaration
+// (`TS2300: Duplicate identifier`), silently removing the only way to
+// contribute a kind. The rule's autofix has done exactly that before.
+// biome-ignore lint/suspicious/noEmptyInterface: emptiness is the feature
+export interface PluginNodes {}
 
 /** `type` discriminants contributed by plugins; `never` when none are declared. */
 export type PluginNodeType = Extract<keyof PluginNodes, string>
