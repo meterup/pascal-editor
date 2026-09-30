@@ -23,8 +23,38 @@ export const MAJOR_GRID_STEP = WALL_GRID_STEP * 2
  */
 export const GRID_COORDINATE_PRECISION = 6
 
+/**
+ * Extra rows and columns ruled beyond the view, counted in minor steps.
+ *
+ * Pan and zoom are applied imperatively and only re-render on a 300ms debounce,
+ * so a path ruled to the view exactly leaves an unruled margin the moment
+ * either moves. This is the slack that covers a gesture.
+ *
+ * Counted in steps, not as a multiple of the view, because the cost in
+ * `buildGridPath` is the number of subpaths. A multiple of the view scales that
+ * with zoom without bound, and a large enough `d` gets geometry dropped by the
+ * renderer: lines stop crossing the scene. In steps the extra count is fixed
+ * (`2 * GRID_MARGIN_STEPS` per axis) while the distance covered still scales,
+ * since the step scales with zoom. At the 12px floor that's ~576px of slack.
+ */
+export const GRID_MARGIN_STEPS = 48
+
 export type GridBounds = { minX: number; maxX: number; minY: number; maxY: number }
 export type GridViewBox = { minX: number; minY: number; width: number; height: number }
+
+/** Grow bounds outward by `margin` plan units on every side. */
+export function expandGridBounds(bounds: GridBounds, margin: number): GridBounds {
+  if (!(Number.isFinite(margin) && margin > 0)) {
+    return bounds
+  }
+
+  return {
+    minX: bounds.minX - margin,
+    maxX: bounds.maxX + margin,
+    minY: bounds.minY - margin,
+    maxY: bounds.maxY + margin,
+  }
+}
 
 export function normalizeGridCoordinate(value: number): number {
   return Number(value.toFixed(GRID_COORDINATE_PRECISION))
