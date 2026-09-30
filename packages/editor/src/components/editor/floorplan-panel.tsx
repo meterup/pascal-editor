@@ -674,6 +674,17 @@ export type FloorplanPanelPalette = {
   majorGrid: string
   minorGridOpacity: number
   majorGridOpacity: number
+  /**
+   * Grid line widths, in screen pixels: the lines are drawn with
+   * `non-scaling-stroke`, so these don't follow the zoom.
+   *
+   * Sub-pixel by default, which is a deliberate part of how restrained the grid
+   * looks and worth knowing before changing it. It also used to be propped up
+   * by `crispEdges` snapping thin lines up to a solid pixel; without that, these
+   * are what decides whether the grid reads at all.
+   */
+  minorGridWidth: number
+  majorGridWidth: number
   slabFill: string
   slabStroke: string
   selectedSlabFill: string
@@ -3242,7 +3253,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         opacity={palette.minorGridOpacity}
         shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.minorGrid}
-        strokeWidth={FLOORPLAN_MINOR_GRID_STROKE_WIDTH}
+        strokeWidth={palette.minorGridWidth}
         vectorEffect="non-scaling-stroke"
       />
 
@@ -3252,7 +3263,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         opacity={palette.majorGridOpacity}
         shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.majorGrid}
-        strokeWidth={FLOORPLAN_MAJOR_GRID_STROKE_WIDTH}
+        strokeWidth={palette.majorGridWidth}
         vectorEffect="non-scaling-stroke"
       />
     </>
@@ -6975,6 +6986,8 @@ export function FloorplanPanel({
             majorGrid: '#64748b',
             minorGridOpacity: 0.62,
             majorGridOpacity: 0.86,
+            minorGridWidth: FLOORPLAN_MINOR_GRID_STROKE_WIDTH,
+            majorGridWidth: FLOORPLAN_MAJOR_GRID_STROKE_WIDTH,
             slabFill: 'rgba(51, 65, 85, 0.48)',
             slabStroke: 'rgba(203, 213, 225, 0.82)',
             selectedSlabFill: 'rgba(59, 130, 246, 0.14)',
@@ -7032,6 +7045,8 @@ export function FloorplanPanel({
             majorGrid: '#475569',
             minorGridOpacity: 0.7,
             majorGridOpacity: 0.9,
+            minorGridWidth: FLOORPLAN_MINOR_GRID_STROKE_WIDTH,
+            majorGridWidth: FLOORPLAN_MAJOR_GRID_STROKE_WIDTH,
             slabFill: '#f6f6f6',
             slabStroke: '#9e9e9e',
             selectedSlabFill: 'rgba(59, 130, 246, 0.14)',
