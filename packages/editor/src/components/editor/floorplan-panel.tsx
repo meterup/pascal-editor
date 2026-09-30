@@ -108,6 +108,7 @@ import useEditor, {
 } from '../../store/use-editor'
 import { useFloorplanDraftPreview } from '../../store/use-floorplan-draft-preview'
 import { useFloorplanMarquee } from '../../store/use-floorplan-marquee'
+import useFloorplanViewport from '../../store/use-floorplan-viewport'
 import useInteractionScope, {
   useActiveHandleDrag,
   useEndpointReshape,
@@ -203,9 +204,11 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  GRID_QUANTUM_STEPS,
   GRID_SHAPE_RENDERING,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
+  quantizeGridBounds,
 } from './floorplan-grid'
 import {
   canApplyFloorplanNavigationSync,
@@ -3170,16 +3173,58 @@ function getRoofSegmentRidgeLine(
 }
 
 const FloorplanGridLayer = memo(function FloorplanGridLayer({
-  majorGridPath,
-  minorGridPath,
+  committedViewBox,
   palette,
+  rotationDeg,
   showGrid,
+  surfaceWidth,
 }: {
-  majorGridPath: string
-  minorGridPath: string
+  committedViewBox: FloorplanPresentationViewBox
   palette: FloorplanPanelPalette
+  rotationDeg: number
   showGrid: boolean
+  surfaceWidth: number
 }) {
+  // The grid rules itself from the live view box rather than taking a finished
+  // path from the panel. Pan and zoom are applied imperatively so the panel
+  // doesn't re-render per frame (its render costs ~120-220ms), which left
+  // anything the panel derived a gesture behind: the level of detail only caught
+  // up when the viewport committed, ~300ms after you stopped zooming.
+  // Subscribing here keeps the panel out of the render path and still re-rules
+  // every frame.
+  const liveViewBox = useFloorplanViewport((state) => state.liveViewBox)
+  const viewBox = liveViewBox ?? committedViewBox
+
+  const steps = useMemo(
+    () => getVisibleGridSteps(viewBox.width, surfaceWidth),
+    [surfaceWidth, viewBox.width],
+  )
+  // Quantized so a pan rebuilds the path once per few steps of travel rather
+  // than per frame: `buildGridPath` walks the whole ruled area, and the ruled
+  // margin covers the drift in between.
+  const bounds = useMemo(
+    () =>
+      quantizeGridBounds(
+        expandGridBounds(
+          getRotatedViewBoxBounds(getFloorplanRotationOverscanViewBox(viewBox), rotationDeg),
+          steps.minorStep * GRID_MARGIN_STEPS,
+        ),
+        steps.minorStep * GRID_QUANTUM_STEPS,
+      ),
+    [rotationDeg, steps.minorStep, viewBox],
+  )
+  const minorGridPath = useMemo(
+    () =>
+      buildGridPath(bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.minorStep, {
+        excludeStep: steps.majorStep,
+      }),
+    [bounds, steps.majorStep, steps.minorStep],
+  )
+  const majorGridPath = useMemo(
+    () => buildGridPath(bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.majorStep),
+    [bounds, steps.majorStep],
+  )
+
   if (!showGrid) {
     return null
   }
@@ -6116,6 +6161,11 @@ export function FloorplanPanel({
         background.setAttribute('width', String(nextPaintViewBox.width))
         background.setAttribute('height', String(nextPaintViewBox.height))
       }
+
+      // Publish for the grid layer, which re-rules itself from this. Writing
+      // through `getState` rather than a hook keeps the panel out of it: only
+      // the small subscribing layer re-renders.
+      useFloorplanViewport.getState().setLiveViewBox(nextViewBox)
     },
     [svgAspectRatio],
   )
@@ -6352,6 +6402,7 @@ export function FloorplanPanel({
       floorplanNavigationSyncPresentationRef.current = null
       floorplanViewportInteractionInProgressRef.current = false
       floorplanImperativeViewBoxRef.current = null
+      useFloorplanViewport.getState().setLiveViewBox(null)
       setFloorplanUserRotationDeg((current) =>
         current === presentationState.latestUserRotationDeg
           ? current
@@ -6386,6 +6437,7 @@ export function FloorplanPanel({
     }
     floorplanViewportInteractionInProgressRef.current = false
     floorplanImperativeViewBoxRef.current = null
+    useFloorplanViewport.getState().setLiveViewBox(null)
   }, [floorplanNavigationSyncScheduler])
 
   const stopFloorplanViewAnimation = useCallback(() => {
@@ -7060,56 +7112,16 @@ export function FloorplanPanel({
     [palette, isDark],
   )
   const slabSelectionHatchId = useMemo(() => `floorplan-slab-selection-hatch-${isDark}`, [isDark])
-  // Both read `presentationViewBox`, not `viewBox`, so they describe what is on
-  // screen rather than the last committed viewport. They're the same outside a
-  // gesture; during one the presentation box tracks the imperative updates. A
-  // render that happens mid-gesture for some unrelated reason (a selection, a
-  // hover) would otherwise re-rule the grid for the pre-gesture view, undoing
-  // the zoom's effect on it until the viewport commits.
-  const gridSteps = useMemo(
-    () => getVisibleGridSteps(presentationViewBox.width, surfaceSize.width),
-    [presentationViewBox.width, surfaceSize.width],
-  )
-  // Ruled past the view by a fixed number of steps, so a pan or zoom doesn't
-  // outrun the path before the 300ms viewport commit re-renders it. See
-  // `GRID_MARGIN_STEPS` for why the slack is counted in steps rather than taken
-  // as a multiple of the view.
-  const gridBounds = useMemo(
+  // Extent handed to `floorplanBackgroundSlot`: the rotation-inflated view, with
+  // no grid margin folded in. The grid's own slack is an implementation detail
+  // of how often it rebuilds its path, and hosts overdraw to their own taste.
+  const backgroundBounds = useMemo(
     () =>
-      expandGridBounds(
-        getRotatedViewBoxBounds(
-          getFloorplanRotationOverscanViewBox(presentationViewBox),
-          floorplanSceneRotationDeg,
-        ),
-        gridSteps.minorStep * GRID_MARGIN_STEPS,
+      getRotatedViewBoxBounds(
+        getFloorplanRotationOverscanViewBox(presentationViewBox),
+        floorplanSceneRotationDeg,
       ),
-    [floorplanSceneRotationDeg, gridSteps.minorStep, presentationViewBox],
-  )
-
-  const minorGridPath = useMemo(
-    () =>
-      buildGridPath(
-        gridBounds.minX,
-        gridBounds.maxX,
-        gridBounds.minY,
-        gridBounds.maxY,
-        gridSteps.minorStep,
-        {
-          excludeStep: gridSteps.majorStep,
-        },
-      ),
-    [gridBounds, gridSteps.majorStep, gridSteps.minorStep],
-  )
-  const majorGridPath = useMemo(
-    () =>
-      buildGridPath(
-        gridBounds.minX,
-        gridBounds.maxX,
-        gridBounds.minY,
-        gridBounds.maxY,
-        gridSteps.majorStep,
-      ),
-    [gridBounds, gridSteps.majorStep],
+    [floorplanSceneRotationDeg, presentationViewBox],
   )
   const liveFloorplanUnitsPerPixel = viewBox.width / Math.max(surfaceSize.width, 1)
   const floorplanUnitsPerPixel = floorplanRenderUnitsPerPixel ?? liveFloorplanUnitsPerPixel
@@ -7563,6 +7575,7 @@ export function FloorplanPanel({
     floorplanZoomPoseRef.current = null
     floorplanViewportInteractionInProgressRef.current = false
     floorplanImperativeViewBoxRef.current = null
+    useFloorplanViewport.getState().setLiveViewBox(null)
     if (!nextViewport) return
     setFloorplanRenderUnitsPerPixel(
       (current) => current ?? latestFloorplanRenderUnitsPerPixelRef.current,
@@ -7686,6 +7699,7 @@ export function FloorplanPanel({
       }
       floorplanViewportInteractionInProgressRef.current = false
       floorplanImperativeViewBoxRef.current = null
+      useFloorplanViewport.getState().setLiveViewBox(null)
     },
     [],
   )
@@ -7696,6 +7710,7 @@ export function FloorplanPanel({
     floorplanPanPoseRef.current = null
     floorplanViewportInteractionInProgressRef.current = false
     floorplanImperativeViewBoxRef.current = null
+    useFloorplanViewport.getState().setLiveViewBox(null)
     if (nextViewport) {
       setViewport((current) =>
         floorplanViewportEquals(current, nextViewport) ? current : nextViewport,
@@ -7714,6 +7729,7 @@ export function FloorplanPanel({
     (rotationState: FloorplanRotationState) => {
       floorplanViewportInteractionInProgressRef.current = false
       floorplanImperativeViewBoxRef.current = null
+      useFloorplanViewport.getState().setLiveViewBox(null)
       queueFloorplanRotationPresentationRestore(pendingFloorplanRotationRestoreRef, rotationState)
       setFloorplanUserRotationDeg((current) =>
         current === rotationState.latestUserRotationDeg
@@ -7758,6 +7774,7 @@ export function FloorplanPanel({
     floorplanRotationStateRef.current = null
     floorplanViewportInteractionInProgressRef.current = false
     floorplanImperativeViewBoxRef.current = null
+    useFloorplanViewport.getState().setLiveViewBox(null)
     setIsSpacePanPressed(false)
     setIsPanning(false)
     setIsRotatingFloorplan(false)
@@ -11326,19 +11343,20 @@ export function FloorplanPanel({
             >
               {/* First child, so a host backdrop paints under the grid and every
                   geometry layer. Inside this group it inherits the scene's pan and
-                  rotation, and `gridBounds` is the same rotation-inflated extent
-                  the grid spans, so a backdrop sized to it never clips. */}
+                  rotation, and the bounds are inflated for the rotation, so a
+                  backdrop sized to them covers the view at any angle. */}
               {floorplanBackgroundSlot?.({
-                bounds: gridBounds,
+                bounds: backgroundBounds,
                 unitsPerPixel: floorplanUnitsPerPixel,
                 rotationDeg: floorplanSceneRotationDeg,
               })}
 
               <FloorplanGridLayer
-                majorGridPath={majorGridPath}
-                minorGridPath={minorGridPath}
+                committedViewBox={presentationViewBox}
                 palette={palette}
+                rotationDeg={floorplanSceneRotationDeg}
                 showGrid={showGrid}
+                surfaceWidth={surfaceSize.width}
               />
 
               {/* Dev-only: draw each wall's opening-snap hit area (the

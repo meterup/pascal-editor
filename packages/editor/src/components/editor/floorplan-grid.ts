@@ -39,6 +39,17 @@ export const GRID_COORDINATE_PRECISION = 6
  */
 export const GRID_MARGIN_STEPS = 48
 
+/**
+ * Granularity the ruled area snaps to, in minor steps.
+ *
+ * The grid re-rules per frame during a gesture, and `buildGridPath` walks the
+ * whole ruled area, so rebuilding on every pointer move is wasteful when the
+ * result barely differs. Snapping the bounds to this means a pan rebuilds once
+ * per `GRID_QUANTUM_STEPS` of travel; `GRID_MARGIN_STEPS` covers the drift in
+ * between, which is why it has to be the larger of the two.
+ */
+export const GRID_QUANTUM_STEPS = 8
+
 export type GridBounds = { minX: number; maxX: number; minY: number; maxY: number }
 export type GridViewBox = { minX: number; minY: number; width: number; height: number }
 
@@ -53,6 +64,27 @@ export type GridViewBox = { minX: number; minY: number; width: number; height: n
  * grid is a moving reference, so the sharpness isn't worth either.
  */
 export const GRID_SHAPE_RENDERING = 'geometricPrecision'
+
+/**
+ * Snap bounds outward to a multiple of `quantum`.
+ *
+ * Only ever enlarges, so coverage is never reduced. The point is to stop the
+ * ruled area changing on every frame of a pan: quantized, the path is rebuilt
+ * once per `quantum` of travel instead of per pointer move, and the ruled
+ * margin absorbs the difference in between.
+ */
+export function quantizeGridBounds(bounds: GridBounds, quantum: number): GridBounds {
+  if (!(Number.isFinite(quantum) && quantum > 0)) {
+    return bounds
+  }
+
+  return {
+    minX: Math.floor(bounds.minX / quantum) * quantum,
+    maxX: Math.ceil(bounds.maxX / quantum) * quantum,
+    minY: Math.floor(bounds.minY / quantum) * quantum,
+    maxY: Math.ceil(bounds.maxY / quantum) * quantum,
+  }
+}
 
 /** Grow bounds outward by `margin` plan units on every side. */
 export function expandGridBounds(bounds: GridBounds, margin: number): GridBounds {
