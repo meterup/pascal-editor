@@ -7059,9 +7059,15 @@ export function FloorplanPanel({
     [palette, isDark],
   )
   const slabSelectionHatchId = useMemo(() => `floorplan-slab-selection-hatch-${isDark}`, [isDark])
+  // Both read `presentationViewBox`, not `viewBox`, so they describe what is on
+  // screen rather than the last committed viewport. They're the same outside a
+  // gesture; during one the presentation box tracks the imperative updates. A
+  // render that happens mid-gesture for some unrelated reason (a selection, a
+  // hover) would otherwise re-rule the grid for the pre-gesture view, undoing
+  // the zoom's effect on it until the viewport commits.
   const gridSteps = useMemo(
-    () => getVisibleGridSteps(viewBox.width, surfaceSize.width),
-    [surfaceSize.width, viewBox.width],
+    () => getVisibleGridSteps(presentationViewBox.width, surfaceSize.width),
+    [presentationViewBox.width, surfaceSize.width],
   )
   // Ruled past the view by a fixed number of steps, so a pan or zoom doesn't
   // outrun the path before the 300ms viewport commit re-renders it. See
@@ -7071,12 +7077,12 @@ export function FloorplanPanel({
     () =>
       expandGridBounds(
         getRotatedViewBoxBounds(
-          getFloorplanRotationOverscanViewBox(viewBox),
+          getFloorplanRotationOverscanViewBox(presentationViewBox),
           floorplanSceneRotationDeg,
         ),
         gridSteps.minorStep * GRID_MARGIN_STEPS,
       ),
-    [floorplanSceneRotationDeg, gridSteps.minorStep, viewBox],
+    [floorplanSceneRotationDeg, gridSteps.minorStep, presentationViewBox],
   )
 
   const minorGridPath = useMemo(
