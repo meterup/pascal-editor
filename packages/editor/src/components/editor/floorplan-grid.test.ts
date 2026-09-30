@@ -3,12 +3,14 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  GRID_QUANTUM_STEPS,
   getGridShapeRendering,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
   isGridAligned,
   MIN_GRID_SCREEN_SPACING,
   MIN_MAJOR_GRID_SCREEN_SPACING,
+  quantizeGridBounds,
 } from './floorplan-grid'
 
 const SURFACE_WIDTH = 800
@@ -169,5 +171,35 @@ describe('floorplan grid margin', () => {
 
     expect(expandGridBounds(bounds, 0)).toEqual(bounds)
     expect(expandGridBounds(bounds, Number.NaN)).toEqual(bounds)
+  })
+
+  test('quantizing only ever enlarges, so coverage is never lost', () => {
+    const bounds = { minX: -3.3, maxX: 4.1, minY: -0.2, maxY: 7.9 }
+    const quantized = quantizeGridBounds(bounds, 2)
+
+    expect(quantized.minX).toBeLessThanOrEqual(bounds.minX)
+    expect(quantized.maxX).toBeGreaterThanOrEqual(bounds.maxX)
+    expect(quantized.minY).toBeLessThanOrEqual(bounds.minY)
+    expect(quantized.maxY).toBeGreaterThanOrEqual(bounds.maxY)
+  })
+
+  test('quantizing holds the bounds steady across a sub-quantum pan', () => {
+    // This is what stops the path rebuilding on every pointer move: drifting by
+    // less than a quantum has to land on the same ruled area.
+    const first = quantizeGridBounds({ minX: 0, maxX: 10, minY: 0, maxY: 10 }, 4)
+    const nudged = quantizeGridBounds({ minX: 0.5, maxX: 10.5, minY: 0.5, maxY: 10.5 }, 4)
+
+    expect(nudged).toEqual(first)
+  })
+
+  test('the margin outlasts the quantum, so drift stays covered', () => {
+    expect(GRID_MARGIN_STEPS).toBeGreaterThan(GRID_QUANTUM_STEPS)
+  })
+
+  test('leaves bounds alone for a degenerate quantum', () => {
+    const bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 }
+
+    expect(quantizeGridBounds(bounds, 0)).toEqual(bounds)
+    expect(quantizeGridBounds(bounds, Number.NaN)).toEqual(bounds)
   })
 })
