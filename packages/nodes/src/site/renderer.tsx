@@ -137,6 +137,7 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
     return theme.backgroundSky ?? theme.background
   })
   const appearance = useViewer((state) => getSceneTheme(state.sceneTheme).appearance)
+  const showSiteBoundary = useViewer((state) => state.showSiteBoundary)
   const maxLightIntensity = useViewer((state) =>
     Math.max(1, ...getSceneTheme(state.sceneTheme).lights.map((light) => light.intensity)),
   )
@@ -370,7 +371,7 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
       {showTerrain && <TerrainRenderer material={groundMaterial} site={node} />}
 
       {/* Ground fill: site polygon with slab holes, occludes below-grade geometry */}
-      {groundGeometry && !showTerrain && (
+      {groundGeometry && !showTerrain && showSiteBoundary && (
         <mesh
           geometry={groundGeometry}
           material={groundMaterial}
@@ -394,10 +395,12 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
       )}
 
       {/* Simple boundary line */}
-      {/* @ts-ignore */}
-      <line frustumCulled={false} geometry={lineGeometry} renderOrder={9}>
-        <lineBasicMaterial color="#f59e0b" linewidth={2} opacity={0.6} transparent />
-      </line>
+      {showSiteBoundary && (
+        // @ts-expect-error `line` resolves to React's SVG intrinsic, not R3F's Line
+        <line frustumCulled={false} geometry={lineGeometry} renderOrder={9}>
+          <lineBasicMaterial color="#f59e0b" linewidth={2} opacity={0.6} transparent />
+        </line>
+      )}
     </group>
   )
 }

@@ -6049,11 +6049,19 @@ export function FloorplanPanel({
     !isFenceEndpointMoveActive &&
     isFloorplanItemContextActive
   const visibleSitePolygon = displaySitePolygon
+  // Gates the boundary's rendered layers, not `visibleSitePolygon` itself: the
+  // fitted-viewport maths further down sizes the initial frame from that
+  // polygon, and hiding the boundary must not reframe the plan.
+  const showSiteBoundary = useViewer((state) => state.showSiteBoundary)
   const canUseSiteBoundaryVertexHandles =
-    visibleSitePolygon !== null && !sceneReadOnly && siteBoundaryHandlesEnabled({ mode, phase })
+    visibleSitePolygon !== null &&
+    showSiteBoundary &&
+    !sceneReadOnly &&
+    siteBoundaryHandlesEnabled({ mode, phase })
   const isSiteBoundaryHighlighted = isSiteEditActive || siteVertexDragState !== null
   const shouldShowSiteEdgeLabels =
     Boolean(visibleSitePolygon) &&
+    showSiteBoundary &&
     activeHandleDrag?.nodeId === visibleSitePolygon?.site.id &&
     activeHandleDrag?.label === SITE_BOUNDARY_DRAG_LABEL
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
@@ -11499,12 +11507,14 @@ export function FloorplanPanel({
                   paint on top of node geometry. */}
               <FloorplanAlignmentGuideLayer />
 
-              <FloorplanSiteLayer
-                dimmed={selectedIds.length > 1 || previewSelectedIds.length > 1}
-                isHighlighted={isSiteBoundaryHighlighted}
-                palette={palette}
-                sitePolygon={visibleSitePolygon}
-              />
+              {showSiteBoundary && (
+                <FloorplanSiteLayer
+                  dimmed={selectedIds.length > 1 || previewSelectedIds.length > 1}
+                  isHighlighted={isSiteBoundaryHighlighted}
+                  palette={palette}
+                  sitePolygon={visibleSitePolygon}
+                />
+              )}
 
               <FloorplanPolygonHandleLayer
                 edgeHandles={siteEdgeHandles}
