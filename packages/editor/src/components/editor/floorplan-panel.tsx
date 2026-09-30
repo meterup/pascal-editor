@@ -5049,6 +5049,10 @@ export function FloorplanPanel({
   const setPhase = useEditor((state) => state.setPhase)
   const setMovingNode = useEditor((state) => state.setMovingNode)
   const structureLayer = useEditor((state) => state.structureLayer)
+  // Gates the affordances that aren't registry-driven, so they can't be dragged
+  // in a locked scene. The registry layer already strips its own handles on
+  // this; the guide and site-boundary layers predate that and never checked.
+  const sceneReadOnly = useScene((state) => state.readOnly)
   const setStructureLayer = useEditor((state) => state.setStructureLayer)
   const setTool = useEditor((state) => state.setTool)
   const tool = useEditor((state) => state.tool)
@@ -6008,6 +6012,7 @@ export function FloorplanPanel({
   const canInteractFloorplanSlabs = isDeleteMode || canSelectElementFloorplanGeometry
   const canInteractWithGuides =
     showGuides &&
+    !sceneReadOnly &&
     canSelectElementFloorplanGeometry &&
     !referenceScaleDraft &&
     !pendingReferenceScale
@@ -6053,7 +6058,7 @@ export function FloorplanPanel({
     isFloorplanItemContextActive
   const visibleSitePolygon = displaySitePolygon
   const canUseSiteBoundaryVertexHandles =
-    visibleSitePolygon !== null && siteBoundaryHandlesEnabled({ mode, phase })
+    visibleSitePolygon !== null && !sceneReadOnly && siteBoundaryHandlesEnabled({ mode, phase })
   const isSiteBoundaryHighlighted = isSiteEditActive || siteVertexDragState !== null
   const shouldShowSiteEdgeLabels =
     Boolean(visibleSitePolygon) &&
