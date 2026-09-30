@@ -11236,7 +11236,15 @@ export function FloorplanPanel({
       ref={containerRef}
     >
       <FloorplanSiteKeyHandler onRestoreGroundLevel={restoreGroundLevelStructureSelection} />
-      <div className="relative min-h-0 flex-1 bg-white" ref={viewportHostRef}>
+      {/* Themed rather than `bg-white`, because this isn't always covered. The
+          surface rect lives inside the SVG, so a rotation gesture (which
+          CSS-rotates the SVG) swings it away from the corners and exposes this,
+          and a dark palette shouldn't flash white when it does. */}
+      <div
+        className="relative min-h-0 flex-1"
+        ref={viewportHostRef}
+        style={{ background: palette.surface }}
+      >
         <FloorplanCursorIndicator
           cursorColor={floorplanCursorColor}
           floorplanSelectionTool={floorplanSelectionTool}
