@@ -54,22 +54,16 @@ export type GridBounds = { minX: number; maxX: number; minY: number; maxY: numbe
 export type GridViewBox = { minX: number; minY: number; width: number; height: number }
 
 /**
- * How to rasterize the grid at a given scene rotation.
+ * How to rasterize the grid.
  *
- * `crispEdges` turns off anti-aliasing so a 1px line lands exactly on the pixel
- * grid. That only holds for axis-aligned lines. Rotate the scene and the lines
- * are diagonal, so switching it off just stair-steps them, and the stepping
- * changes with every sub-pixel change to the view box. A pan or zoom then
- * re-rasterizes the whole grid differently each frame, which reads as the grid
- * shimmering rather than moving.
+ * Never `crispEdges`, which the grid used to ask for. It turns off
+ * anti-aliasing and snaps each line onto the pixel grid, which is only a win
+ * for a grid that is both axis-aligned and still. Move it and every line jumps
+ * a whole pixel, each one independently, on every sub-pixel change to the view
+ * box: diagonal lines re-stair-step (a shimmer), axis-aligned ones jitter. The
+ * grid is a moving reference, so the sharpness isn't worth either.
  */
-export function getGridShapeRendering(
-  rotationDegrees: number,
-): 'crispEdges' | 'geometricPrecision' {
-  const offAxis = Math.abs(((rotationDegrees % 90) + 90) % 90)
-
-  return offAxis < 1e-6 || offAxis > 90 - 1e-6 ? 'crispEdges' : 'geometricPrecision'
-}
+export const GRID_SHAPE_RENDERING = 'geometricPrecision'
 
 /**
  * Snap bounds outward to a multiple of `quantum`.

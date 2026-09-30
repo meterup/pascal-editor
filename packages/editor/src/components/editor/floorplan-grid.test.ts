@@ -4,7 +4,7 @@ import {
   expandGridBounds,
   GRID_MARGIN_STEPS,
   GRID_QUANTUM_STEPS,
-  getGridShapeRendering,
+  GRID_SHAPE_RENDERING,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
   isGridAligned,
@@ -107,17 +107,13 @@ describe('floorplan grid path', () => {
 })
 
 describe('floorplan grid rasterization', () => {
-  test('only turns off anti-aliasing when the grid is axis-aligned', () => {
-    // `crispEdges` snaps lines to the pixel grid, which only helps when they're
-    // axis-aligned. Rotated, it stair-steps them instead, and the stepping
-    // changes with every sub-pixel view-box change, so a pan or zoom shimmers.
-    for (const rotation of [0, 90, 180, 270, -90, 360]) {
-      expect(getGridShapeRendering(rotation)).toBe('crispEdges')
-    }
-
-    for (const rotation of [45, 1, -1, 44.9, 89.5, 135, 0.5]) {
-      expect(getGridShapeRendering(rotation)).toBe('geometricPrecision')
-    }
+  test('never asks for crispEdges, at any rotation', () => {
+    // `crispEdges` snaps each line onto the pixel grid, which only helps a grid
+    // that is both axis-aligned and still. Moving, every line jumps a whole
+    // pixel independently on each sub-pixel view-box change: diagonals
+    // re-stair-step, axis-aligned lines jitter. Being axis-aligned is not the
+    // exemption it looks like, which an earlier version of this assumed.
+    expect(GRID_SHAPE_RENDERING).toBe('geometricPrecision')
   })
 })
 

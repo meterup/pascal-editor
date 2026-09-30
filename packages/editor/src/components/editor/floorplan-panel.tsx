@@ -212,7 +212,7 @@ import {
   expandGridBounds,
   GRID_MARGIN_STEPS,
   GRID_QUANTUM_STEPS,
-  getGridShapeRendering,
+  GRID_SHAPE_RENDERING,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
   quantizeGridBounds,
@@ -3243,7 +3243,6 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
     () => buildGridPath(bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.majorStep),
     [bounds, steps.majorStep],
   )
-  const shapeRendering = getGridShapeRendering(rotationDeg)
 
   if (!showGrid) {
     return null
@@ -3255,7 +3254,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={minorGridPath}
         fill="none"
         opacity={palette.minorGridOpacity}
-        shapeRendering={shapeRendering}
+        shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.minorGrid}
         strokeWidth={FLOORPLAN_MINOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
@@ -3265,7 +3264,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={majorGridPath}
         fill="none"
         opacity={palette.majorGridOpacity}
-        shapeRendering={shapeRendering}
+        shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.majorGrid}
         strokeWidth={FLOORPLAN_MAJOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
