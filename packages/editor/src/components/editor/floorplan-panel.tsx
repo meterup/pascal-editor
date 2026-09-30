@@ -210,6 +210,7 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  getGridShapeRendering,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
 } from './floorplan-grid'
@@ -3191,11 +3192,13 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
   majorGridPath,
   minorGridPath,
   palette,
+  shapeRendering,
   showGrid,
 }: {
   majorGridPath: string
   minorGridPath: string
   palette: FloorplanPanelPalette
+  shapeRendering: 'crispEdges' | 'geometricPrecision'
   showGrid: boolean
 }) {
   if (!showGrid) {
@@ -3208,7 +3211,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={minorGridPath}
         fill="none"
         opacity={palette.minorGridOpacity}
-        shapeRendering="crispEdges"
+        shapeRendering={shapeRendering}
         stroke={palette.minorGrid}
         strokeWidth={FLOORPLAN_MINOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
@@ -3218,7 +3221,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={majorGridPath}
         fill="none"
         opacity={palette.majorGridOpacity}
-        shapeRendering="crispEdges"
+        shapeRendering={shapeRendering}
         stroke={palette.majorGrid}
         strokeWidth={FLOORPLAN_MAJOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
@@ -7132,6 +7135,10 @@ export function FloorplanPanel({
     [palette, isDark],
   )
   const slabSelectionHatchId = useMemo(() => `floorplan-slab-selection-hatch-${isDark}`, [isDark])
+  // Anti-aliased unless the grid is actually axis-aligned. See
+  // `getGridShapeRendering`: `crispEdges` on a rotated grid re-rasterizes the
+  // stair-stepping every sub-pixel frame, which reads as the grid shimmering.
+  const gridShapeRendering = getGridShapeRendering(floorplanSceneRotationDeg)
   // Both read `presentationViewBox`, not `viewBox`, so they describe what is on
   // screen rather than the last committed viewport. They're the same outside a
   // gesture; during one the presentation box tracks the imperative updates. A
@@ -11447,6 +11454,7 @@ export function FloorplanPanel({
                 majorGridPath={majorGridPath}
                 minorGridPath={minorGridPath}
                 palette={palette}
+                shapeRendering={gridShapeRendering}
                 showGrid={showGrid}
               />
 

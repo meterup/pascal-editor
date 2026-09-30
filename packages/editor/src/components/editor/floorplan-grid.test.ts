@@ -3,6 +3,7 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  getGridShapeRendering,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
   isGridAligned,
@@ -100,6 +101,21 @@ describe('floorplan grid path', () => {
   test('returns nothing for a degenerate step', () => {
     expect(buildGridPath(-1, 1, -1, 1, 0)).toBe('')
     expect(buildGridPath(-1, 1, -1, 1, Number.NaN)).toBe('')
+  })
+})
+
+describe('floorplan grid rasterization', () => {
+  test('only turns off anti-aliasing when the grid is axis-aligned', () => {
+    // `crispEdges` snaps lines to the pixel grid, which only helps when they're
+    // axis-aligned. Rotated, it stair-steps them instead, and the stepping
+    // changes with every sub-pixel view-box change, so a pan or zoom shimmers.
+    for (const rotation of [0, 90, 180, 270, -90, 360]) {
+      expect(getGridShapeRendering(rotation)).toBe('crispEdges')
+    }
+
+    for (const rotation of [45, 1, -1, 44.9, 89.5, 135, 0.5]) {
+      expect(getGridShapeRendering(rotation)).toBe('geometricPrecision')
+    }
   })
 })
 

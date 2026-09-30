@@ -42,6 +42,24 @@ export const GRID_MARGIN_STEPS = 48
 export type GridBounds = { minX: number; maxX: number; minY: number; maxY: number }
 export type GridViewBox = { minX: number; minY: number; width: number; height: number }
 
+/**
+ * How to rasterize the grid at a given scene rotation.
+ *
+ * `crispEdges` turns off anti-aliasing so a 1px line lands exactly on the pixel
+ * grid. That only holds for axis-aligned lines. Rotate the scene and the lines
+ * are diagonal, so switching it off just stair-steps them, and the stepping
+ * changes with every sub-pixel change to the view box. A pan or zoom then
+ * re-rasterizes the whole grid differently each frame, which reads as the grid
+ * shimmering rather than moving.
+ */
+export function getGridShapeRendering(
+  rotationDegrees: number,
+): 'crispEdges' | 'geometricPrecision' {
+  const offAxis = Math.abs(((rotationDegrees % 90) + 90) % 90)
+
+  return offAxis < 1e-6 || offAxis > 90 - 1e-6 ? 'crispEdges' : 'geometricPrecision'
+}
+
 /** Grow bounds outward by `margin` plan units on every side. */
 export function expandGridBounds(bounds: GridBounds, margin: number): GridBounds {
   if (!(Number.isFinite(margin) && margin > 0)) {
