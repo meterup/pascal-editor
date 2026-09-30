@@ -199,7 +199,13 @@ import {
   subscribeFloorplanCameraNavigation,
   useFloorplanCameraSyncBridge,
 } from './floorplan-camera-sync'
-import { buildGridPath, getRotatedViewBoxBounds, getVisibleGridSteps } from './floorplan-grid'
+import {
+  buildGridPath,
+  expandGridBounds,
+  GRID_MARGIN_STEPS,
+  getRotatedViewBoxBounds,
+  getVisibleGridSteps,
+} from './floorplan-grid'
 import {
   canApplyFloorplanNavigationSync,
   canZoomFloorplanDuringNavigation,
@@ -7057,13 +7063,20 @@ export function FloorplanPanel({
     () => getVisibleGridSteps(viewBox.width, surfaceSize.width),
     [surfaceSize.width, viewBox.width],
   )
+  // Ruled past the view by a fixed number of steps, so a pan or zoom doesn't
+  // outrun the path before the 300ms viewport commit re-renders it. See
+  // `GRID_MARGIN_STEPS` for why the slack is counted in steps rather than taken
+  // as a multiple of the view.
   const gridBounds = useMemo(
     () =>
-      getRotatedViewBoxBounds(
-        getFloorplanRotationOverscanViewBox(viewBox),
-        floorplanSceneRotationDeg,
+      expandGridBounds(
+        getRotatedViewBoxBounds(
+          getFloorplanRotationOverscanViewBox(viewBox),
+          floorplanSceneRotationDeg,
+        ),
+        gridSteps.minorStep * GRID_MARGIN_STEPS,
       ),
-    [floorplanSceneRotationDeg, viewBox],
+    [floorplanSceneRotationDeg, gridSteps.minorStep, viewBox],
   )
 
   const minorGridPath = useMemo(

@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildGridPath,
+  expandGridBounds,
+  GRID_MARGIN_STEPS,
+  getRotatedViewBoxBounds,
   getVisibleGridSteps,
   isGridAligned,
   MIN_GRID_SCREEN_SPACING,
@@ -97,5 +100,58 @@ describe('floorplan grid path', () => {
   test('returns nothing for a degenerate step', () => {
     expect(buildGridPath(-1, 1, -1, 1, 0)).toBe('')
     expect(buildGridPath(-1, 1, -1, 1, Number.NaN)).toBe('')
+  })
+})
+
+describe('floorplan grid margin', () => {
+  const subpaths = (path: string) => (path.match(/M /g) ?? []).length
+
+  test('adds a fixed number of lines whatever the zoom', () => {
+    // The regression this guards: the slack was once taken as a multiple of the
+    // view, so the subpath count scaled with zoom until the `d` grew large
+    // enough that the renderer dropped geometry and lines stopped crossing the
+    // scene. In steps the extra count is the same at every zoom.
+    const counts = [60, 24, 12, 4, 1].map((pixelsPerUnit) => {
+      const { minorStep } = stepsAt(pixelsPerUnit)
+      const view = getRotatedViewBoxBounds(
+        {
+          minX: -400 / pixelsPerUnit,
+          minY: -300 / pixelsPerUnit,
+          width: 800 / pixelsPerUnit,
+          height: 600 / pixelsPerUnit,
+        },
+        0,
+      )
+      const bare = buildGridPath(view.minX, view.maxX, view.minY, view.maxY, minorStep)
+      const expanded = expandGridBounds(view, minorStep * GRID_MARGIN_STEPS)
+      const ruled = buildGridPath(
+        expanded.minX,
+        expanded.maxX,
+        expanded.minY,
+        expanded.maxY,
+        minorStep,
+      )
+
+      return subpaths(ruled) - subpaths(bare)
+    })
+
+    // Two axes, `GRID_MARGIN_STEPS` either side of each.
+    for (const added of counts) {
+      expect(added).toBe(4 * GRID_MARGIN_STEPS)
+    }
+  })
+
+  test('covers more distance the further out you zoom', () => {
+    const near = stepsAt(60).minorStep * GRID_MARGIN_STEPS
+    const far = stepsAt(1).minorStep * GRID_MARGIN_STEPS
+
+    expect(far).toBeGreaterThan(near)
+  })
+
+  test('leaves bounds alone for a degenerate margin', () => {
+    const bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 }
+
+    expect(expandGridBounds(bounds, 0)).toEqual(bounds)
+    expect(expandGridBounds(bounds, Number.NaN)).toEqual(bounds)
   })
 })
