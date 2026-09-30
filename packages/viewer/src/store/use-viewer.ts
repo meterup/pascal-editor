@@ -118,6 +118,15 @@ type ViewerState = {
   showZones: boolean
   setShowZones: (show: boolean) => void
 
+  // Presentation flag for the site's own boundary geometry: the dashed polygon,
+  // its edge labels and vertex handles in 2D, and the ground pad plus amber
+  // outline in 3D. Governs both views from one flag because the boundary is the
+  // same polygon in each. Buildings, items and the horizon ground are unaffected,
+  // so turning it off leaves a scene without a visible lot outline rather than a
+  // scene without a floor. Not persisted — a host-level presentation choice.
+  showSiteBoundary: boolean
+  setShowSiteBoundary: (show: boolean) => void
+
   transparentBackground: boolean
   setTransparentBackground: (transparent: boolean) => void
 
@@ -464,6 +473,9 @@ const useViewer = create<ViewerState>()(
 
       showZones: true,
       setShowZones: (show) => set({ showZones: show }),
+
+      showSiteBoundary: true,
+      setShowSiteBoundary: (show) => set({ showSiteBoundary: show }),
 
       transparentBackground: false,
       setTransparentBackground: (transparent) => set({ transparentBackground: transparent }),
