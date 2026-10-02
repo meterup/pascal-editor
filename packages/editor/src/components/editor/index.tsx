@@ -213,6 +213,17 @@ export interface EditorProps {
    * approximate it. Return `null` for no compass.
    */
   floorplanCompassSlot?: FloorplanCompassSlot
+  /**
+   * Hides the editor's own floating overlays: the level selector, the action
+   * menu, the inspector/panel manager, and the helper manager. Defaults to
+   * `false`.
+   *
+   * For hosts that supply their own toolbar and panels. Selection, hover
+   * highlighting and the editing handles are untouched, so the canvas stays
+   * interactive. Capture mode also hides these, but it suppresses selection
+   * along with them and is meant to last only as long as a snapshot.
+   */
+  hideBuiltInOverlays?: boolean
 
   projectId?: string | null
 
@@ -1138,9 +1149,13 @@ const ViewerCanvas = memo(function ViewerCanvas({
           {viewMode === 'split' && (
             <div
               className="absolute inset-y-0 -right-3 z-10 flex w-6 cursor-col-resize items-center justify-center"
+              data-pascal-floorplan-divider=""
               onPointerDown={handleFloorplanDividerDown}
             >
-              <div className="h-8 w-1 rounded-full bg-neutral-400" />
+              <div
+                className="h-8 w-1 rounded-full bg-neutral-400"
+                data-pascal-floorplan-divider-thumb=""
+              />
             </div>
           )}
         </div>
@@ -1268,6 +1283,7 @@ export default function Editor({
   floorplanNavigationInput,
   floorplanNavigationLink,
   floorplanCompassSlot,
+  hideBuiltInOverlays = false,
   projectId,
   onLoad,
   onSave,
@@ -1598,13 +1614,25 @@ export default function Editor({
               navbarSlot={navbarSlot}
               overlays={
                 <>
-                  {!(isCaptureMode || stageOverlay) && <FloatingLevelSelector />}
-                  {!(isVersionPreviewMode || isCaptureMode || isStudioMode) && (
+                  {!(isCaptureMode || hideBuiltInOverlays || stageOverlay) && (
+                    <FloatingLevelSelector />
+                  )}
+                  {!(
+                    isVersionPreviewMode ||
+                    isCaptureMode ||
+                    hideBuiltInOverlays ||
+                    isStudioMode
+                  ) && (
                     <div className="pointer-events-auto">
                       <ActionMenu />
                     </div>
                   )}
-                  {!(isVersionPreviewMode || isCaptureMode || isStudioMode) && (
+                  {!(
+                    isVersionPreviewMode ||
+                    isCaptureMode ||
+                    hideBuiltInOverlays ||
+                    isStudioMode
+                  ) && (
                     <div className="pointer-events-auto">
                       <PanelManager
                         inspectorFooter={inspectorFooter}
@@ -1612,7 +1640,7 @@ export default function Editor({
                       />
                     </div>
                   )}
-                  {!isCaptureMode && (
+                  {!(isCaptureMode || hideBuiltInOverlays) && (
                     <div className="pointer-events-auto">
                       <HelperManager />
                     </div>
@@ -1685,15 +1713,19 @@ export default function Editor({
 
           {/* Fixed UI overlays scoped to the viewer area */}
           <ViewerOverlays left={overlayLeft}>
-            <div className="pointer-events-auto">
-              <ActionMenu />
-            </div>
-            <div className="pointer-events-auto">
-              <PanelManager />
-            </div>
-            <div className="pointer-events-auto">
-              <HelperManager />
-            </div>
+            {!hideBuiltInOverlays && (
+              <>
+                <div className="pointer-events-auto">
+                  <ActionMenu />
+                </div>
+                <div className="pointer-events-auto">
+                  <PanelManager />
+                </div>
+                <div className="pointer-events-auto">
+                  <HelperManager />
+                </div>
+              </>
+            )}
             <RiserDiagramPanel />
             {isFirstPersonMode && (
               <FirstPersonOverlay onExit={() => useEditor.getState().setFirstPersonMode(false)} />
