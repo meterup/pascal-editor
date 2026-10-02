@@ -91,8 +91,15 @@ function resolvePanelComponent(panel: EditorHostPanel): ComponentType {
  * Panels are filtered by the current workspace: a panel surfaces only in the
  * workspaces it declares (`EditorHostPanel.workspaces`, default `['edit']`), so an
  * authoring panel like Nature doesn't ride into the studio rail.
+ *
+ * `includeBuiltIns: false` drops the built-in Plugins manager, for hosts that
+ * replace the editor's chrome. Host and registered panels are unaffected, so a
+ * host can hide the built-in rail entry and still show its own.
  */
-export function useHostPanels(hostPanels?: ExtraPanel[]): ExtraPanel[] {
+export function useHostPanels(
+  hostPanels?: ExtraPanel[],
+  { includeBuiltIns = true }: { includeBuiltIns?: boolean } = {},
+): ExtraPanel[] {
   const registered = useSyncExternalStore(
     editorHostPanelRegistry.subscribe,
     editorHostPanelRegistry.getSnapshot,
@@ -127,6 +134,8 @@ export function useHostPanels(hostPanels?: ExtraPanel[]): ExtraPanel[] {
       }),
     )
   const manager =
-    workspaceMode === 'edit' && !hostIds.has(pluginsManagerPanel.id) ? [pluginsManagerPanel] : []
+    includeBuiltIns && workspaceMode === 'edit' && !hostIds.has(pluginsManagerPanel.id)
+      ? [pluginsManagerPanel]
+      : []
   return [...(hostPanels ?? []), ...fromRegistry, ...manager]
 }

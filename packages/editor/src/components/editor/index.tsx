@@ -1345,7 +1345,7 @@ export default function Editor({
   // hook order is stable across the v1 / v2 layout branches below; the v1
   // AppSidebar path merges its own copy internally, the v2 path merges these
   // into its tab bar.
-  const hostRailPanels = useHostPanels()
+  const hostRailPanels = useHostPanels(undefined, { includeBuiltIns: !hideBuiltInOverlays })
 
   useEffect(() => {
     const teardown = initializeEditorRuntime()
