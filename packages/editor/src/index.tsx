@@ -34,6 +34,10 @@ export {
   floorplanNavigationPoseToCameraPose,
 } from './components/editor/floorplan-camera-sync'
 export type {
+  FloorplanDividerContext,
+  FloorplanDividerSlot,
+} from './components/editor/floorplan-divider-slot'
+export type {
   FloorplanBackgroundContext,
   FloorplanNavigationInput,
   FloorplanPanelPalette,
