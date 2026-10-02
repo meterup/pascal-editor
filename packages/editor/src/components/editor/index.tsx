@@ -78,6 +78,7 @@ import { FenceTangentLines3D } from './fence-tangent-lines-3d'
 import { FirstPersonControls, FirstPersonOverlay } from './first-person-controls'
 import { FloatingActionMenu } from './floating-action-menu'
 import { FloatingBuildingActionMenu } from './floating-building-action-menu'
+import type { FloorplanDividerSlot } from './floorplan-divider-slot'
 import { FloorplanModeCoordinator } from './floorplan-mode-coordinator'
 import {
   type FloorplanBackgroundContext,
@@ -232,6 +233,12 @@ export interface EditorProps {
    * along with them and is meant to last only as long as a snapshot.
    */
   hideBuiltInOverlays?: boolean
+  /**
+   * Replaces the pill on the split-view divider, so a host can match its own
+   * resize handles or hang controls off the divider. Receives the handler that
+   * starts the pane drag. Only rendered in split view.
+   */
+  floorplanDividerSlot?: FloorplanDividerSlot
 
   projectId?: string | null
 
@@ -1048,6 +1055,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanNavigationInput,
   floorplanNavigationLink,
   floorplanCompassSlot,
+  floorplanDividerSlot,
   hideBuiltInOverlays = false,
   disablePostFx = false,
 }: {
@@ -1067,6 +1075,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanNavigationInput?: FloorplanNavigationInput
   floorplanNavigationLink?: boolean
   floorplanCompassSlot?: FloorplanCompassSlot
+  floorplanDividerSlot?: FloorplanDividerSlot
   hideBuiltInOverlays?: boolean
   disablePostFx?: boolean
 }) {
@@ -1162,10 +1171,14 @@ const ViewerCanvas = memo(function ViewerCanvas({
               data-pascal-floorplan-divider=""
               onPointerDown={handleFloorplanDividerDown}
             >
-              <div
-                className="h-8 w-1 rounded-full bg-neutral-400"
-                data-pascal-floorplan-divider-thumb=""
-              />
+              {floorplanDividerSlot ? (
+                floorplanDividerSlot({ startResize: handleFloorplanDividerDown })
+              ) : (
+                <div
+                  className="h-8 w-1 rounded-full bg-neutral-400"
+                  data-pascal-floorplan-divider-thumb=""
+                />
+              )}
             </div>
           )}
         </div>
@@ -1297,6 +1310,7 @@ export default function Editor({
   floorplanNavigationLink,
   floorplanCompassSlot,
   hideBuiltInOverlays = false,
+  floorplanDividerSlot,
   projectId,
   onLoad,
   onSave,
@@ -1568,6 +1582,7 @@ export default function Editor({
       floorplanBackgroundSlot={floorplanBackgroundSlot}
       floorplanNavigationInput={floorplanNavigationInput}
       floorplanCompassSlot={floorplanCompassSlot}
+      floorplanDividerSlot={floorplanDividerSlot}
       hideBuiltInOverlays={hideBuiltInOverlays}
       floorplanNavigationLink={floorplanNavigationLink}
       floorplanPalette={floorplanPalette}
