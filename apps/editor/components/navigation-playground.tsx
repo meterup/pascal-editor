@@ -101,9 +101,10 @@ const useQuarterTurnPlan = (animated: boolean) => {
 
   return useCallback(
     (direction: 1 | -1) => {
-      if (!plan.pose) return
+      const pose = plan.getPose()
+      if (!pose) return
 
-      const headingDegrees = (plan.pose.azimuth * 180) / Math.PI
+      const headingDegrees = (pose.azimuth * 180) / Math.PI
       const quarters = Math.round(headingDegrees / QUARTER_TURN_DEGREES) + direction
 
       plan.rotateToDegrees(quarters * QUARTER_TURN_DEGREES, {

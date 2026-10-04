@@ -15,7 +15,7 @@
  */
 
 import { animate } from 'motion/react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import useEditor, {
   type NavigationSyncPose,
@@ -50,15 +50,22 @@ export type FloorplanAnimationOptions = {
 }
 
 export type FloorplanNavigationControls = {
-  /** The plan's current pose, or `null` before it has published one. */
-  pose: NavigationSyncPose | null
+  /**
+   * The plan's current pose, or `null` before it has published one.
+   *
+   * A getter rather than a value on purpose. The pose changes every frame while
+   * anything is moving, so subscribing to it would re-render this hook's caller
+   * at that rate, which for a caller that renders the editor is the whole cost
+   * the imperative viewport exists to avoid.
+   */
+  getPose: () => NavigationSyncPose | null
   /**
    * Scene metres per CSS pixel, or `null` before the plan has published a pose.
    *
    * The conversion screen-space input needs, and the reason `panByPixels`
    * exists rather than leaving every host to work it out.
    */
-  metersPerPixel: number | null
+  getMetersPerPixel: () => number | null
   /**
    * Moves the view by a screen-space delta, in CSS pixels.
    *
@@ -105,11 +112,15 @@ export type FloorplanNavigationControls = {
  * @returns The current pose, the pixel conversion, and the commands
  */
 export const useFloorplanNavigationControls = (): FloorplanNavigationControls => {
-  const pose = useEditor((state) => state.navigationSyncPose)
-  const surfaceWidth = useFloorplanViewport((state) => state.surfaceSize.width)
   const animationRef = useRef<{ stop: () => void } | null>(null)
 
-  const metersPerPixel = pose ? pose.viewWidth / Math.max(surfaceWidth, 1) : null
+  const getPose = useCallback(() => useEditor.getState().navigationSyncPose, [])
+
+  const getMetersPerPixel = useCallback(() => {
+    const pose = useEditor.getState().navigationSyncPose
+    if (!pose) return null
+    return pose.viewWidth / Math.max(useFloorplanViewport.getState().surfaceSize.width, 1)
+  }, [])
 
   const stopAnimation = useCallback(() => {
     animationRef.current?.stop()
@@ -148,7 +159,8 @@ export const useFloorplanNavigationControls = (): FloorplanNavigationControls =>
   const panByPixels = useCallback(
     (dxPx: number, dyPx: number) => {
       publish((current) => {
-        const scale = current.viewWidth / Math.max(surfaceWidth, 1)
+        const scale =
+          current.viewWidth / Math.max(useFloorplanViewport.getState().surfaceSize.width, 1)
         // Screen deltas are in view space, so they rotate into the plan by the
         // view's own azimuth before they can move the target.
         const cos = Math.cos(current.azimuth)
@@ -165,7 +177,7 @@ export const useFloorplanNavigationControls = (): FloorplanNavigationControls =>
         }
       })
     },
-    [publish, surfaceWidth],
+    [publish],
   )
 
   const centerOn = useCallback(
@@ -233,16 +245,32 @@ export const useFloorplanNavigationControls = (): FloorplanNavigationControls =>
     [rotateToRadians],
   )
 
-  return {
-    pose,
-    metersPerPixel,
-    panByPixels,
-    panByMeters,
-    centerOn,
-    zoomBy,
-    zoomTo,
-    rotateByDegrees,
-    rotateToDegrees,
-    stopAnimation,
-  }
+  // Stable identity, so a caller can put this straight in an effect's
+  // dependencies without rebinding its listeners on every render.
+  return useMemo(
+    () => ({
+      getPose,
+      getMetersPerPixel,
+      panByPixels,
+      panByMeters,
+      centerOn,
+      zoomBy,
+      zoomTo,
+      rotateByDegrees,
+      rotateToDegrees,
+      stopAnimation,
+    }),
+    [
+      getPose,
+      getMetersPerPixel,
+      panByPixels,
+      panByMeters,
+      centerOn,
+      zoomBy,
+      zoomTo,
+      rotateByDegrees,
+      rotateToDegrees,
+      stopAnimation,
+    ],
+  )
 }

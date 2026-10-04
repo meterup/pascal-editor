@@ -1,5 +1,13 @@
 # editor
 
+## 0.0.0-snapshot-20261004120739
+
+### Patch Changes
+
+- Updated dependencies [4baeb8e]
+- Updated dependencies [4baeb8e]
+  - @pascal-app/editor@0.0.0-snapshot-20261004120739
+
 ## 0.0.0-snapshot-20261002183359
 
 ### Patch Changes
