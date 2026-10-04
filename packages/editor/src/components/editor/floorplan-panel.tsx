@@ -230,6 +230,7 @@ import {
   resolveFloorplanPresentationViewBox,
   setFloorplanCompassRotation,
 } from './floorplan-navigation-presentation'
+import { subscribeFloorplanHeading } from '../../lib/floorplan-heading'
 import { useFloorplanBackgroundPlacement } from './use-floorplan-background-placement'
 import { useFloorplanHitTesting } from './use-floorplan-hit-testing'
 import { useFloorplanSceneData } from './use-floorplan-scene-data'
@@ -6827,10 +6828,15 @@ export function FloorplanPanel({
 
     const updateSize = () => {
       const rect = host.getBoundingClientRect()
-      setSurfaceSize({
+      const size = {
         width: Math.max(rect.width, 1),
         height: Math.max(rect.height, 1),
-      })
+      }
+      setSurfaceSize(size)
+      // Published as well as kept in state so a host can convert screen-space
+      // deltas into scene units. A navigation pose carries only its width in
+      // metres, which isn't enough on its own.
+      useFloorplanViewport.getState().setSurfaceSize(size)
     }
 
     updateSize()
@@ -11227,6 +11233,7 @@ export function FloorplanPanel({
     northRotationDeg: floorplanUserRotationDeg,
     alignToNorth: alignFloorplanViewToNorth,
     needleRef: compassNeedleRef,
+    onHeadingChange: subscribeFloorplanHeading,
   }
   const compassControl = floorplanCompassSlot ? (
     floorplanCompassSlot(compassContext)

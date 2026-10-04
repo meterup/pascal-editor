@@ -43,6 +43,7 @@ import {
   createFloorplanNavigationSyncScheduler,
   setFloorplanCompassRotation,
 } from '../editor/floorplan-navigation-presentation'
+import { subscribeFloorplanHeading } from '../../lib/floorplan-heading'
 import { FloorplanGeometryRenderer } from '../editor-2d/renderers/floorplan-geometry-renderer'
 import {
   FloorplanCompassButton,
@@ -879,6 +880,7 @@ export function FloorplanPreview({
     northRotationDeg: rotationDeg,
     alignToNorth,
     needleRef: compassNeedleRef,
+    onHeadingChange: subscribeFloorplanHeading,
   }
   const compassControl = floorplanCompassSlot ? (
     floorplanCompassSlot(compassContext)

@@ -22,8 +22,27 @@ export type FloorplanCompassContext = {
    * every camera frame to move a needle is too expensive. Ignoring this ref
    * still leaves a correct compass, just one that updates per commit rather
    * than per frame.
+   *
+   * Only usable by a host whose rotating element is an `<svg>` it owns. If it
+   * composes an existing icon component instead, use `onHeadingChange`.
    */
   needleRef: React.RefObject<SVGSVGElement | null>
+  /**
+   * The same per-frame heading as `needleRef`, as a subscription, for hosts
+   * that can't attach the ref. Fires immediately with the current heading.
+   *
+   * Drive whatever you like from it, an animation library's value or a style
+   * write by hand:
+   *
+   * ```tsx
+   * const heading = useMotionValue(0)
+   * useEffect(() => onHeadingChange((deg) => heading.set(deg)), [onHeadingChange])
+   * return <motion.div style={{ rotate: heading }}>{glyph}</motion.div>
+   * ```
+   *
+   * @returns An unsubscribe function
+   */
+  onHeadingChange: (listener: (northRotationDeg: number) => void) => () => void
 }
 
 /**
