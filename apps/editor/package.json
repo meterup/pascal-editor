@@ -1,6 +1,6 @@
 {
   "name": "editor",
-  "version": "0.0.0-snapshot-20260922140121",
+  "version": "0.0.0-snapshot-20261002183359",
   "type": "module",
   "private": true,
   "scripts": {
@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",
-    "@pascal-app/plugin-bones": "github:pascalorg/plugin-bones#5679260261ee1c733656ff6dfb99e30bb24b58a7",
     "@mint/pascal-plugin": "github:mintdotgg/mint-pascal-plugin#902c546dbaece6b31455c0dc394afe6b9cd136fe",
     "@number-flow/react": "^0.6.0",
     "@pascal-app/core": "workspace:*",
     "@pascal-app/editor": "workspace:*",
     "@pascal-app/mcp": "workspace:*",
     "@pascal-app/nodes": "workspace:*",
+    "@pascal-app/plugin-bones": "github:pascalorg/plugin-bones#5679260261ee1c733656ff6dfb99e30bb24b58a7",
     "@pascal-app/plugin-streetscape": "github:sudhir9297/streetscape-pascal-plugin#1c04ec9ccb3fa8124ec56dfc1026567cbbc51aef",
     "@pascal-app/plugin-trees": "github:pascalorg/plugin-trees#56d978cd9b409b716207b3f3d269455d3cd6f067",
     "@pascal-app/viewer": "workspace:*",
@@ -30,6 +30,7 @@
     "clsx": "^2.1.1",
     "geist": "^1.7.0",
     "lucide-react": "^1.7.0",
+    "motion": "^12.34.3",
     "next": "16.3.0",
     "postcss": "^8.5.6",
     "react": "^19.2.4",

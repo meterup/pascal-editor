@@ -1,5 +1,47 @@
 # editor
 
+## 0.0.0-snapshot-20261002183359
+
+### Patch Changes
+
+- Updated dependencies [665ed39]
+  - @pascal-app/editor@0.0.0-snapshot-20261002183359
+
+## 0.0.0-snapshot-20261002155703
+
+### Patch Changes
+
+- Updated dependencies [a79cc1b]
+  - @pascal-app/editor@0.0.0-snapshot-20261002155703
+
+## 0.0.0-snapshot-20261002154734
+
+### Patch Changes
+
+- Updated dependencies [dfb72d4]
+  - @pascal-app/editor@0.0.0-snapshot-20261002154734
+
+## 0.0.0-snapshot-20260930202703
+
+### Patch Changes
+
+- Updated dependencies [e5df7cf]
+- Updated dependencies [8156d9f]
+- Updated dependencies [7828128]
+- Updated dependencies [ca10bf4]
+- Updated dependencies [7541b48]
+- Updated dependencies [566ba39]
+- Updated dependencies [c0760d0]
+- Updated dependencies [6fcf751]
+- Updated dependencies [5cf544a]
+- Updated dependencies [7d8e873]
+- Updated dependencies [d0a75ce]
+- Updated dependencies [8e9b05d]
+  - @pascal-app/editor@0.0.0-snapshot-20260930202703
+  - @pascal-app/core@0.0.0-snapshot-20260930202703
+  - @pascal-app/viewer@0.0.0-snapshot-20260930202703
+  - @pascal-app/nodes@0.0.0-snapshot-20260930202703
+
 ## 0.0.0-snapshot-20260922140121
 
 ### Patch Changes
