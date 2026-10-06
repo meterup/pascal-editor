@@ -1048,6 +1048,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanNavigationLink,
   floorplanCompassSlot,
   floorplanDividerSlot,
+  hideBuiltInOverlays = false,
   disablePostFx = false,
 }: {
   isVersionPreviewMode: boolean
@@ -1067,6 +1068,7 @@ const ViewerCanvas = memo(function ViewerCanvas({
   floorplanNavigationLink?: boolean
   floorplanCompassSlot?: FloorplanCompassSlot
   floorplanDividerSlot?: FloorplanDividerSlot
+  hideBuiltInOverlays?: boolean
   disablePostFx?: boolean
 }) {
   const viewMode = useEditor((s) => s.viewMode)
@@ -1188,7 +1190,10 @@ const ViewerCanvas = memo(function ViewerCanvas({
             containerRef={viewer3dRef}
             isVersionPreviewMode={isVersionPreviewMode}
           />
-          {!showLoader && isCameraControlsHintVisible && !isFirstPersonMode ? (
+          {!showLoader &&
+          isCameraControlsHintVisible &&
+          !hideBuiltInOverlays &&
+          !isFirstPersonMode ? (
             <ViewerCanvasControlsHint
               isPreviewMode={isPreviewMode}
               onDismiss={dismissCameraControlsHint}
@@ -1552,6 +1557,7 @@ export default function Editor({
       floorplanNavigationInput={floorplanNavigationInput}
       floorplanCompassSlot={floorplanCompassSlot}
       floorplanDividerSlot={floorplanDividerSlot}
+      hideBuiltInOverlays={hideBuiltInOverlays}
       floorplanNavigationLink={floorplanNavigationLink}
       floorplanPalette={floorplanPalette}
     />
