@@ -122,7 +122,6 @@ export default function Home() {
               ? () => null
               : hostCompassSlot
         }
-        floorplanNavigationInput={playground.navigationInput}
         floorplanNavigationLink={playground.navigationLink}
         floorplanPalette={playground.tintPalette ? TINTED_FLOORPLAN_PALETTE : undefined}
         layoutVersion="v2"

@@ -667,19 +667,6 @@ const REFERENCE_REGISTRY_KINDS = new Set<AnyNode['type']>([
 ])
 
 /**
- * Who handles pan, rotate and zoom gestures over the 2D floor plan.
- *
- * `'builtin'` keeps the editor's own bindings: middle-drag or space and
- * left-drag to pan, right-drag to rotate, wheel and pinch to zoom.
- *
- * `'host'` leaves those gestures alone, for hosts that want their own
- * bindings. Nothing replaces them, so the host has to drive the view itself
- * by publishing `'host'` poses through `useEditor.publishNavigationSyncPose`.
- * Node interaction, selection and the compass are unaffected.
- */
-export type FloorplanNavigationInput = 'builtin' | 'host'
-
-/**
  * Every themed colour the 2D floor plan draws with, from the surface and grid
  * through to selection, handle and snap-guide chrome.
  *
@@ -4943,7 +4930,6 @@ export function FloorplanPanel({
   floorplanSceneSlot,
   floorplanBackgroundSlot,
   floorplanPalette,
-  floorplanNavigationInput = 'builtin',
   floorplanNavigationLink = true,
   floorplanCompassSlot,
 }: {
@@ -4951,11 +4937,13 @@ export function FloorplanPanel({
   floorplanSceneSlot?: ReactNode
   floorplanBackgroundSlot?: (context: FloorplanBackgroundContext) => ReactNode
   floorplanPalette?: Partial<FloorplanPanelPalette>
-  floorplanNavigationInput?: FloorplanNavigationInput
   floorplanNavigationLink?: boolean
   floorplanCompassSlot?: FloorplanCompassSlot
 }) {
-  const hostOwnsNavigation = floorplanNavigationInput === 'host'
+  // From the store rather than a prop, so it can only be set by a mounted
+  // `useFloorplanNavigation`. Declaring it separately from the thing honouring
+  // it is how you end up with a plan nobody is driving.
+  const hostOwnsNavigation = useEditor((state) => state.floorplanNavigationInput === 'host')
   const navigationLinked = floorplanNavigationLink
   useFloorplanCameraSyncBridge(navigationLinked)
   const viewportHostRef = useRef<HTMLDivElement>(null)

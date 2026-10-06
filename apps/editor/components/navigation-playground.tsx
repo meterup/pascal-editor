@@ -127,7 +127,9 @@ const useQuarterTurnPlan = (animated: boolean) => {
  * a gesture.
  */
 const useHostFloorplanNavigation = (enabled: boolean) => {
-  const plan = useFloorplanNavigation()
+  // Claiming ownership and binding the gestures are the same call, so the
+  // editor cannot be told a host is driving by something that then does not.
+  const plan = useFloorplanNavigation({ input: enabled ? 'host' : 'builtin' })
 
   useEffect(() => {
     if (!enabled) return

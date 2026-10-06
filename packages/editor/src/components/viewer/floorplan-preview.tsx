@@ -33,6 +33,7 @@ import {
 } from '../../lib/floorplan'
 import { getFloorplanNodeExtension } from '../../lib/floorplan/floorplan-extension'
 import { buildFloorplanContext, floorplanLayerRank } from '../../lib/floorplan/floorplan-readonly'
+import { subscribeFloorplanHeading } from '../../lib/floorplan-heading'
 import { subscribeNavigationSyncPose } from '../../store/navigation-sync-pose-store'
 import useEditor, { type NavigationSyncPose } from '../../store/use-editor'
 import {
@@ -43,7 +44,6 @@ import {
   createFloorplanNavigationSyncScheduler,
   setFloorplanCompassRotation,
 } from '../editor/floorplan-navigation-presentation'
-import { subscribeFloorplanHeading } from '../../lib/floorplan-heading'
 import { FloorplanGeometryRenderer } from '../editor-2d/renderers/floorplan-geometry-renderer'
 import {
   FloorplanCompassButton,

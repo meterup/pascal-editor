@@ -14,12 +14,20 @@
  */
 
 import { type AnyNode, emitter, useScene } from '@pascal-app/core'
-import { type CameraInputConfig, useViewer } from '@pascal-app/viewer'
+import { type CameraInputConfig, type CameraNavigationInput, useViewer } from '@pascal-app/viewer'
 import { useCallback, useEffect, useMemo } from 'react'
 
-import { computeSceneBoundsXZ } from './scene-bounds'
+import { computeSceneBoundsXZ } from '../scene-bounds'
 
 export type CameraNavigationOptions = {
+  /**
+   * Who handles the camera's gestures. Defaults to `'builtin'`.
+   *
+   * Claimed while this hook is mounted and released when it isn't, so
+   * ownership can't outlive whatever was honouring it. Declaring it apart from
+   * the thing doing the work is how you get a camera nobody is driving.
+   */
+  input?: CameraNavigationInput
   /**
    * Which gesture drives which camera action, merged over the defaults so an
    * unset entry keeps whatever the current mode asked for.
@@ -72,6 +80,7 @@ export const useCameraNavigation = (
   options?: CameraNavigationOptions,
 ): CameraNavigationControls => {
   const bindings = options?.bindings
+  const input = options?.input
 
   useEffect(() => {
     if (!bindings) return undefined
@@ -82,6 +91,16 @@ export const useCameraNavigation = (
       useViewer.getState().setCameraInput(null)
     }
   }, [bindings])
+
+  useEffect(() => {
+    if (!input) return undefined
+
+    useViewer.getState().setCameraNavigationInput(input)
+
+    return () => {
+      useViewer.getState().setCameraNavigationInput('builtin')
+    }
+  }, [input])
 
   const fitScene = useCallback(() => {
     const bounds = computeSceneBoundsXZ(useScene.getState().nodes)

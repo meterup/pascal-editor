@@ -1,5 +1,13 @@
 # @pascal-app/ifc-converter
 
+## 0.0.0-snapshot-20260930202703
+
+### Patch Changes
+
+- Updated dependencies [7d8e873]
+- Updated dependencies [d0a75ce]
+  - @pascal-app/core@0.0.0-snapshot-20260930202703
+
 ## 0.0.0-snapshot-20260922140121
 
 ### Minor Changes

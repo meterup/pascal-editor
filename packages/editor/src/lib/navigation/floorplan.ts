@@ -18,10 +18,11 @@ import { animate } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import useEditor, {
+  type FloorplanNavigationInput,
   type NavigationSyncPose,
   type NavigationSyncPoseInput,
-} from '../store/use-editor'
-import useFloorplanViewport from '../store/use-floorplan-viewport'
+} from '../../store/use-editor'
+import useFloorplanViewport from '../../store/use-floorplan-viewport'
 
 /** Smallest view width we'll zoom to, in metres. Matches the playground. */
 const MIN_VIEW_WIDTH = 0.5
@@ -47,6 +48,17 @@ export type FloorplanAnimationOptions = {
    * for the camera's 60fps stream, so a stream is also how you animate.
    */
   durationMs?: number
+}
+
+export type FloorplanNavigationOptions = {
+  /**
+   * Who handles the plan's gestures. Defaults to `'builtin'`.
+   *
+   * Claimed while this hook is mounted and released when it isn't, so
+   * ownership can't outlive whatever was honouring it. Declaring it apart from
+   * the thing doing the work is how you get a plan nobody is driving.
+   */
+  input?: FloorplanNavigationInput
 }
 
 export type FloorplanNavigation = {
@@ -111,8 +123,21 @@ export type FloorplanNavigation = {
  *
  * @returns The current pose, the pixel conversion, and the commands
  */
-export const useFloorplanNavigation = (): FloorplanNavigation => {
+export const useFloorplanNavigation = (
+  options?: FloorplanNavigationOptions,
+): FloorplanNavigation => {
   const animationRef = useRef<{ stop: () => void } | null>(null)
+  const input = options?.input
+
+  useEffect(() => {
+    if (!input) return undefined
+
+    useEditor.getState().setFloorplanNavigationInput(input)
+
+    return () => {
+      useEditor.getState().setFloorplanNavigationInput('builtin')
+    }
+  }, [input])
 
   const getPose = useCallback(() => useEditor.getState().navigationSyncPose, [])
 
