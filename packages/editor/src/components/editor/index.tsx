@@ -18,7 +18,15 @@ import {
   useViewer,
   Viewer,
 } from '@pascal-app/viewer'
-import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { ViewerOverlay } from '../../components/viewer-overlay'
 import { ViewerZoneSystem } from '../../components/viewer-zone-system'
 import { type SaveStatus, useAutoSave } from '../../hooks/use-auto-save'
@@ -1238,6 +1246,24 @@ export default function Editor({
   // AppSidebar path merges its own copy internally, the v2 path merges these
   // into its tab bar.
   const hostRailPanels = useHostPanels()
+
+  // Version preview withholds the editing *UI*, which left the scene itself
+  // still reporting as editable. Every `readOnly` guard in the scene store and
+  // the 2D panel reads that flag, so they all sat inert under a prop that
+  // plainly means "this can't be edited".
+  //
+  // One-way: preview implies read-only, but a scene can be read-only for
+  // reasons of its own, so leaving preview mustn't declare it editable.
+  useLayoutEffect(() => {
+    if (!isVersionPreviewMode) return
+
+    const previous = useScene.getState().readOnly
+    useScene.getState().setReadOnly(true)
+
+    return () => {
+      useScene.getState().setReadOnly(previous)
+    }
+  }, [isVersionPreviewMode])
 
   useEffect(() => {
     const teardown = initializeEditorRuntime()
