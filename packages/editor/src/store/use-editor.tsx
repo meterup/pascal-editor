@@ -550,7 +550,11 @@ export function normalizePersistedEditorUiState(
   state: Partial<PersistedEditorUiState> | null | undefined,
 ): PersistedEditorUiState {
   const phase = state?.phase === 'structure' || state?.phase === 'furnish' ? state.phase : 'site'
-  let mode = normalizeModeForPhase(phase, state?.mode)
+  // The setters refuse an editing mode on a read-only scene, but the persisted
+  // slice doesn't go through them, so a stored `'build'` from an editable visit
+  // would arm itself on the next read-only one.
+  const readOnly = useScene.getState().readOnly
+  let mode = readOnly ? 'select' : normalizeModeForPhase(phase, state?.mode)
 
   // Migrate old isFloorplanOpen to viewMode
   let viewMode: ViewMode = '3d'
@@ -917,6 +921,18 @@ const useEditor = create<EditorState>()(
       },
       mode: DEFAULT_PERSISTED_EDITOR_UI_STATE.mode,
       setMode: (mode) => {
+        // Every mode but `select` exists to change the scene, so a read-only
+        // one can't be in any of them. Refused here rather than guarded at each
+        // affordance: they all derive from `mode` and `tool`, so holding the
+        // pair at their inert values leaves every one of them already off,
+        // including tools added later.
+        //
+        // Before the promotions below, which would otherwise move the phase or
+        // the view mode on the way to a mode that is about to be refused.
+        if (mode !== 'select' && useScene.getState().readOnly) {
+          return
+        }
+
         // Sculpting is a site-phase mode. Arming it from structure/furnish moves
         // the phase rather than failing silently: the user asked for the ground,
         // and `normalizeModeForPhase` would otherwise reject the mode on the next
@@ -967,7 +983,15 @@ const useEditor = create<EditorState>()(
         syncBrushModeScope(mode)
       },
       tool: DEFAULT_PERSISTED_EDITOR_UI_STATE.tool,
-      setTool: (tool) => set({ tool }),
+      // Arming a tool is the other half of the same statement, and a tool can
+      // outlive the mode that armed it. Clearing one is always allowed.
+      setTool: (tool) => {
+        if (tool !== null && useScene.getState().readOnly) {
+          return
+        }
+
+        set({ tool })
+      },
       toolDefaults: {},
       setToolDefaults: (tool, defaults) =>
         set((state) => {
