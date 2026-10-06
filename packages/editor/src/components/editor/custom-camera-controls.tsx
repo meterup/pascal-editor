@@ -363,6 +363,11 @@ export const CustomCameraControls = () => {
     right: false,
   })
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
+  // A read-only scene has nothing for a plain drag to pick up or move, so the
+  // camera may as well take it. Without this, panning a locked scene wants a
+  // middle button or the space bar, and a laptop trackpad has neither.
+  const sceneReadOnly = useScene((state) => state.readOnly)
+  const viewerOnlyInput = isPreviewMode || sceneReadOnly
   const isFirstPersonMode = useEditor((s) => s.isFirstPersonMode)
   const allowUndergroundCamera = useEditor((s) => s.allowUndergroundCamera)
   const selection = useViewer((s) => s.selection)
@@ -690,12 +695,12 @@ export const CustomCameraControls = () => {
         : CameraControlsImpl.ACTION.DOLLY
 
     return {
-      left: isPreviewMode ? CameraControlsImpl.ACTION.SCREEN_PAN : CameraControlsImpl.ACTION.NONE,
+      left: viewerOnlyInput ? CameraControlsImpl.ACTION.SCREEN_PAN : CameraControlsImpl.ACTION.NONE,
       middle: CameraControlsImpl.ACTION.SCREEN_PAN,
       right: CameraControlsImpl.ACTION.ROTATE,
       wheel: wheelAction,
     }
-  }, [cameraMode, isPreviewMode])
+  }, [cameraMode, viewerOnlyInput])
 
   // Touch gestures (mobile / trackpad).
   // - One finger drag    → rotate by default (much easier on a phone), but
@@ -734,7 +739,7 @@ export const CustomCameraControls = () => {
         ? CameraControlsImpl.ACTION.TOUCH_ZOOM_TRUCK
         : CameraControlsImpl.ACTION.TOUCH_DOLLY_TRUCK
 
-    const oneFingerAction = isPreviewMode
+    const oneFingerAction = viewerOnlyInput
       ? CameraControlsImpl.ACTION.TOUCH_TRUCK
       : isInteracting
         ? CameraControlsImpl.ACTION.NONE
@@ -745,7 +750,7 @@ export const CustomCameraControls = () => {
       two: twoFingerAction,
       three: CameraControlsImpl.ACTION.TOUCH_ROTATE,
     }
-  }, [cameraMode, isPreviewMode, isInteracting])
+  }, [cameraMode, viewerOnlyInput, isInteracting])
 
   useEffect(() => {
     if (isFirstPersonMode) return
@@ -818,8 +823,8 @@ export const CustomCameraControls = () => {
       controls.current.mouseButtons.wheel = wheelAction
       controls.current.mouseButtons.middle = CameraControlsImpl.ACTION.SCREEN_PAN
       controls.current.mouseButtons.right = CameraControlsImpl.ACTION.ROTATE
-      if (isPreviewMode) {
-        // In preview mode, left-click is always pan (viewer-style)
+      if (viewerOnlyInput) {
+        // Nothing to select or move, so left-click is always pan (viewer-style)
         controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
       } else if (space) {
         controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
@@ -959,7 +964,7 @@ export const CustomCameraControls = () => {
     cameraDraggingLifecycle,
     cameraMode,
     gl,
-    isPreviewMode,
+    viewerOnlyInput,
     isFirstPersonMode,
   ])
 
