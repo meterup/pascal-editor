@@ -62,6 +62,7 @@ export { applyWorldScaleBoxUVs } from './lib/box-uv'
 export type {
   CameraInputConfig,
   CameraMouseAction,
+  CameraNavigationInput,
   CameraSingleTouchAction,
   CameraTouchAction,
   CameraWheelAction,

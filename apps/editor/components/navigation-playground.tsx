@@ -7,7 +7,7 @@ import {
   type FloorplanNavigationInput,
   subscribeCameraPose,
   useEditor,
-  useFloorplanNavigationControls,
+  useFloorplanNavigation,
 } from '@pascal-app/editor'
 import { motion, useMotionValue } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
@@ -97,7 +97,7 @@ const QUARTER_TURN_DURATION_MS = 260
  * stream is therefore also how you animate.
  */
 const useQuarterTurnPlan = (animated: boolean) => {
-  const plan = useFloorplanNavigationControls()
+  const plan = useFloorplanNavigation()
 
   return useCallback(
     (direction: 1 | -1) => {
@@ -123,11 +123,11 @@ const useQuarterTurnPlan = (animated: boolean) => {
  *
  * Every binding is a wheel delta handed over as-is. Turning screen pixels into
  * a pose, including rotating them by the plan's own heading, belongs to
- * `useFloorplanNavigationControls` rather than to each host that wants to bind
+ * `useFloorplanNavigation` rather than to each host that wants to bind
  * a gesture.
  */
 const useHostFloorplanNavigation = (enabled: boolean) => {
-  const plan = useFloorplanNavigationControls()
+  const plan = useFloorplanNavigation()
 
   useEffect(() => {
     if (!enabled) return

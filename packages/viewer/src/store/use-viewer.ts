@@ -5,7 +5,7 @@ import type { Object3D } from 'three'
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { CameraInputConfig } from '../lib/camera-input'
+import type { CameraInputConfig, CameraNavigationInput } from '../lib/camera-input'
 import type { EdgeMode } from '../lib/edge-style'
 import type { ColorPreset, RenderShading } from '../lib/materials'
 import { SCENE_THEME_IDS } from '../lib/scene-themes'
@@ -133,6 +133,12 @@ type ViewerState = {
   // the current mode asked for. Not persisted; a host sets it on mount.
   cameraInput: CameraInputConfig | null
   setCameraInput: (input: CameraInputConfig | null) => void
+
+  // Who handles the 3D camera's gestures. 'host' stands the built-in ones down
+  // entirely, for a host binding its own, and is the camera's counterpart to
+  // the floor plan's `floorplanNavigationInput`.
+  cameraNavigationInput: CameraNavigationInput
+  setCameraNavigationInput: (input: CameraNavigationInput) => void
 
   transparentBackground: boolean
   setTransparentBackground: (transparent: boolean) => void
@@ -486,6 +492,9 @@ const useViewer = create<ViewerState>()(
 
       cameraInput: null,
       setCameraInput: (cameraInput) => set({ cameraInput }),
+
+      cameraNavigationInput: 'builtin',
+      setCameraNavigationInput: (cameraNavigationInput) => set({ cameraNavigationInput }),
 
       transparentBackground: false,
       setTransparentBackground: (transparent) => set({ transparentBackground: transparent }),

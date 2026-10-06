@@ -49,7 +49,7 @@ export type FloorplanAnimationOptions = {
   durationMs?: number
 }
 
-export type FloorplanNavigationControls = {
+export type FloorplanNavigation = {
   /**
    * The plan's current pose, or `null` before it has published one.
    *
@@ -98,7 +98,7 @@ export type FloorplanNavigationControls = {
  * Pairs with a gesture library without any pose arithmetic at the call site:
  *
  * ```tsx
- * const plan = useFloorplanNavigationControls()
+ * const plan = useFloorplanNavigation()
  * useGesture({
  *   onDrag: ({ delta: [dx, dy] }) => plan.panByPixels(-dx, -dy),
  *   onPinch: ({ offset: [scale] }) => plan.zoomTo(scale),
@@ -111,7 +111,7 @@ export type FloorplanNavigationControls = {
  *
  * @returns The current pose, the pixel conversion, and the commands
  */
-export const useFloorplanNavigationControls = (): FloorplanNavigationControls => {
+export const useFloorplanNavigation = (): FloorplanNavigation => {
   const animationRef = useRef<{ stop: () => void } | null>(null)
 
   const getPose = useCallback(() => useEditor.getState().navigationSyncPose, [])

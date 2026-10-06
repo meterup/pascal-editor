@@ -462,9 +462,15 @@ export {
 } from './lib/history'
 export type {
   FloorplanAnimationOptions,
-  FloorplanNavigationControls,
+  FloorplanNavigation,
 } from './lib/host-navigation'
-export { useFloorplanNavigationControls } from './lib/host-navigation'
+export type {
+  CameraNavigationControls,
+  CameraNavigationOptions,
+} from './lib/camera-navigation'
+export { useCameraNavigation } from './lib/camera-navigation'
+export { computeSceneBoundsXZ, type SceneBoundsXZ } from './lib/scene-bounds'
+export { useFloorplanNavigation } from './lib/host-navigation'
 export {
   type EditorHostTreeChildren,
   type EditorHostTreeChildrenProps,
