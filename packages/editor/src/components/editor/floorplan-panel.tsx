@@ -11269,6 +11269,7 @@ export function FloorplanPanel({
           and a dark palette shouldn't flash white when it does. */}
       <div
         className="relative min-h-0 flex-1"
+        data-pascal-floorplan-viewport=""
         ref={viewportHostRef}
         style={{ background: palette.surface }}
       >
