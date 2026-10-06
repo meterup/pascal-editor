@@ -5984,14 +5984,24 @@ export function FloorplanPanel({
   useEffect(() => {
     usePlacementPreview.getState().clear()
   }, [levelId])
+  // Both box selections are withheld on a locked plan, the same way the 3D view
+  // withholds its own. Selecting a set is only ever a prelude to acting on it,
+  // and the group affordances that follow are what make a plain drag move walls
+  // around a scene that can't accept the change.
+  //
+  // `mode === 'select'` isn't enough on its own: select is the one mode a
+  // read-only scene is allowed to be in, so these are the affordances the mode
+  // clamp can't reach.
   const isMarqueeSelectionToolActive =
     mode === 'select' &&
+    !sceneReadOnly &&
     floorplanSelectionTool === 'marquee' &&
     !movingNode &&
     !isFenceEndpointMoveActive &&
     structureLayer !== 'zones'
   const isScreenSelectionToolActive =
     mode === 'select' &&
+    !sceneReadOnly &&
     floorplanSelectionTool === 'click' &&
     (phase === 'structure' || phase === 'furnish') &&
     !movingNode &&
