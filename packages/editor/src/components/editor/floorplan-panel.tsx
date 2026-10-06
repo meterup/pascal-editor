@@ -10848,6 +10848,14 @@ export function FloorplanPanel({
         return
       }
 
+      // A locked plan has nothing to box-select and act on, and the 3D view
+      // already withholds its own marquee on the same grounds. Leaving this one
+      // live means a plain drag paints a selection box over a view the user is
+      // only trying to move around.
+      if (sceneReadOnly) {
+        return
+      }
+
       const planPoint = getPlanPointFromClientPoint(event.clientX, event.clientY)
       if (!planPoint) {
         return
@@ -10878,6 +10886,7 @@ export function FloorplanPanel({
     },
     [
       getPlanPointFromClientPoint,
+      sceneReadOnly,
       syncPreviewSelectedIds,
       setFloorplanCursorPosition,
       setCursorPoint,
