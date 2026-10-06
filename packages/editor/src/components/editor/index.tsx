@@ -12,13 +12,22 @@ import {
   useScene,
 } from '@pascal-app/core'
 import {
+  type CameraNavigationInput,
   type HoverStyles,
   InteractiveSystem,
   SceneEnvironment,
   useViewer,
   Viewer,
 } from '@pascal-app/viewer'
-import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { ViewerOverlay } from '../../components/viewer-overlay'
 import { ViewerZoneSystem } from '../../components/viewer-zone-system'
 import { type SaveStatus, useAutoSave } from '../../hooks/use-auto-save'
@@ -198,6 +207,19 @@ export interface EditorProps {
    * own and drive the view with `useEditor.publishNavigationSyncPose`.
    */
   floorplanNavigationInput?: FloorplanNavigationInput
+  /**
+   * Who handles the 3D camera's gestures. Defaults to `'builtin'`; `'host'`
+   * stands them all down so the host can bind its own.
+   *
+   * The camera's counterpart to `floorplanNavigationInput`. To keep the
+   * built-in handling but change which gesture does what, pass `bindings` to
+   * `useCameraNavigation` instead.
+   *
+   * On an editable scene the editor claims some drags for itself, for an armed
+   * tool or a node being moved, and that arbitration isn't exposed yet. A host
+   * binding its own gestures will fight it until it is.
+   */
+  cameraNavigationInput?: CameraNavigationInput
   /**
    * Whether navigating one view moves the other in split mode. Defaults to
    * `true`.
@@ -1299,6 +1321,7 @@ export default function Editor({
   floorplanBackgroundSlot,
   floorplanPalette,
   floorplanNavigationInput,
+  cameraNavigationInput = 'builtin',
   floorplanNavigationLink,
   floorplanCompassSlot,
   hideBuiltInOverlays = false,
@@ -1351,6 +1374,13 @@ export default function Editor({
   // AppSidebar path merges its own copy internally, the v2 path merges these
   // into its tab bar.
   const hostRailPanels = useHostPanels(undefined, { includeBuiltIns: !hideBuiltInOverlays })
+
+  // Through the store rather than as a prop: the camera controls live inside
+  // the 3D canvas and take none, reading what they need from here instead.
+  // A layout effect so the bindings are right on the frame the camera mounts.
+  useLayoutEffect(() => {
+    useViewer.getState().setCameraNavigationInput(cameraNavigationInput)
+  }, [cameraNavigationInput])
 
   useEffect(() => {
     const teardown = initializeEditorRuntime()
