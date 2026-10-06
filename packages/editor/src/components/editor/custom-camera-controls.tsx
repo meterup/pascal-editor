@@ -9,7 +9,15 @@ import {
   sceneRegistry,
   useScene,
 } from '@pascal-app/core'
-import { GRID_LAYER, useViewer, ZONE_LAYER } from '@pascal-app/viewer'
+import {
+  type CameraMouseAction,
+  type CameraSingleTouchAction,
+  type CameraTouchAction,
+  type CameraWheelAction,
+  GRID_LAYER,
+  useViewer,
+  ZONE_LAYER,
+} from '@pascal-app/viewer'
 import { CameraControls, CameraControlsImpl } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -347,6 +355,64 @@ function useFirstPersonCameraPoseRestore(
   return useCallback(() => isRestoring.current, [])
 }
 
+// `satisfies` rather than an annotation, so the keys stay exhaustive while the
+// values keep their literal types. Annotating them would widen every entry to
+// the full ACTION union, which camera-controls then rejects: a wheel and a
+// button don't accept the same set.
+const MOUSE_ACTIONS = {
+  none: CameraControlsImpl.ACTION.NONE,
+  pan: CameraControlsImpl.ACTION.SCREEN_PAN,
+  rotate: CameraControlsImpl.ACTION.ROTATE,
+  zoom: CameraControlsImpl.ACTION.ZOOM,
+  dolly: CameraControlsImpl.ACTION.DOLLY,
+} satisfies Record<CameraMouseAction, unknown>
+
+const WHEEL_ACTIONS = {
+  none: CameraControlsImpl.ACTION.NONE,
+  zoom: CameraControlsImpl.ACTION.ZOOM,
+  dolly: CameraControlsImpl.ACTION.DOLLY,
+} satisfies Record<CameraWheelAction, unknown>
+
+// Split because camera-controls types the one-finger slot more narrowly than
+// the others, which is right: a pinch needs two fingers to express a distance.
+const SINGLE_TOUCH_ACTIONS = {
+  none: CameraControlsImpl.ACTION.NONE,
+  pan: CameraControlsImpl.ACTION.TOUCH_TRUCK,
+  rotate: CameraControlsImpl.ACTION.TOUCH_ROTATE,
+} satisfies Record<CameraSingleTouchAction, unknown>
+
+const TOUCH_ACTIONS = {
+  ...SINGLE_TOUCH_ACTIONS,
+  zoom: CameraControlsImpl.ACTION.TOUCH_ZOOM,
+  dolly: CameraControlsImpl.ACTION.TOUCH_DOLLY,
+  zoomPan: CameraControlsImpl.ACTION.TOUCH_ZOOM_TRUCK,
+  dollyPan: CameraControlsImpl.ACTION.TOUCH_DOLLY_TRUCK,
+} satisfies Record<CameraTouchAction, unknown>
+
+/** The host's binding for a mouse button, or the default when it set none. */
+const resolveMouseAction = <Fallback,>(
+  override: CameraMouseAction | undefined,
+  fallback: Fallback,
+) => (override ? MOUSE_ACTIONS[override] : fallback)
+
+/** The host's binding for the wheel, or the default when it set none. */
+const resolveWheelAction = <Fallback,>(
+  override: CameraWheelAction | undefined,
+  fallback: Fallback,
+) => (override ? WHEEL_ACTIONS[override] : fallback)
+
+/** The host's binding for a one-finger drag, or the default when it set none. */
+const resolveSingleTouchAction = <Fallback,>(
+  override: CameraSingleTouchAction | undefined,
+  fallback: Fallback,
+) => (override ? SINGLE_TOUCH_ACTIONS[override] : fallback)
+
+/** The host's binding for a multi-finger gesture, or the default when it set none. */
+const resolveTouchAction = <Fallback,>(
+  override: CameraTouchAction | undefined,
+  fallback: Fallback,
+) => (override ? TOUCH_ACTIONS[override] : fallback)
+
 export const CustomCameraControls = () => {
   const controls = useRef<CameraControlsImpl | null>(null)
   const pendingAppliedPose = useRef<CameraPoseApplicationPlan | null>(null)
@@ -363,11 +429,7 @@ export const CustomCameraControls = () => {
     right: false,
   })
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
-  // A read-only scene has nothing for a plain drag to pick up or move, so the
-  // camera may as well take it. Without this, panning a locked scene wants a
-  // middle button or the space bar, and a laptop trackpad has neither.
-  const sceneReadOnly = useScene((state) => state.readOnly)
-  const viewerOnlyInput = isPreviewMode || sceneReadOnly
+  const cameraInput = useViewer((s) => s.cameraInput)
   const isFirstPersonMode = useEditor((s) => s.isFirstPersonMode)
   const allowUndergroundCamera = useEditor((s) => s.allowUndergroundCamera)
   const selection = useViewer((s) => s.selection)
@@ -694,13 +756,18 @@ export const CustomCameraControls = () => {
         ? CameraControlsImpl.ACTION.ZOOM
         : CameraControlsImpl.ACTION.DOLLY
 
+    const overrides = cameraInput?.mouseButtons
+
     return {
-      left: viewerOnlyInput ? CameraControlsImpl.ACTION.SCREEN_PAN : CameraControlsImpl.ACTION.NONE,
-      middle: CameraControlsImpl.ACTION.SCREEN_PAN,
-      right: CameraControlsImpl.ACTION.ROTATE,
-      wheel: wheelAction,
+      left: resolveMouseAction(
+        overrides?.left,
+        isPreviewMode ? CameraControlsImpl.ACTION.SCREEN_PAN : CameraControlsImpl.ACTION.NONE,
+      ),
+      middle: resolveMouseAction(overrides?.middle, CameraControlsImpl.ACTION.SCREEN_PAN),
+      right: resolveMouseAction(overrides?.right, CameraControlsImpl.ACTION.ROTATE),
+      wheel: resolveWheelAction(overrides?.wheel, wheelAction),
     }
-  }, [cameraMode, viewerOnlyInput])
+  }, [cameraInput, cameraMode, isPreviewMode])
 
   // Touch gestures (mobile / trackpad).
   // - One finger drag    → rotate by default (much easier on a phone), but
@@ -739,18 +806,20 @@ export const CustomCameraControls = () => {
         ? CameraControlsImpl.ACTION.TOUCH_ZOOM_TRUCK
         : CameraControlsImpl.ACTION.TOUCH_DOLLY_TRUCK
 
-    const oneFingerAction = viewerOnlyInput
+    const oneFingerAction = isPreviewMode
       ? CameraControlsImpl.ACTION.TOUCH_TRUCK
       : isInteracting
         ? CameraControlsImpl.ACTION.NONE
         : CameraControlsImpl.ACTION.TOUCH_ROTATE
 
+    const overrides = cameraInput?.touches
+
     return {
-      one: oneFingerAction,
-      two: twoFingerAction,
-      three: CameraControlsImpl.ACTION.TOUCH_ROTATE,
+      one: resolveSingleTouchAction(overrides?.one, oneFingerAction),
+      two: resolveTouchAction(overrides?.two, twoFingerAction),
+      three: resolveTouchAction(overrides?.three, CameraControlsImpl.ACTION.TOUCH_ROTATE),
     }
-  }, [cameraMode, viewerOnlyInput, isInteracting])
+  }, [cameraInput, cameraMode, isPreviewMode, isInteracting])
 
   useEffect(() => {
     if (isFirstPersonMode) return
@@ -820,17 +889,26 @@ export const CustomCameraControls = () => {
         cameraMode === 'orthographic'
           ? CameraControlsImpl.ACTION.ZOOM
           : CameraControlsImpl.ACTION.DOLLY
-      controls.current.mouseButtons.wheel = wheelAction
-      controls.current.mouseButtons.middle = CameraControlsImpl.ACTION.SCREEN_PAN
-      controls.current.mouseButtons.right = CameraControlsImpl.ACTION.ROTATE
-      if (viewerOnlyInput) {
-        // Nothing to select or move, so left-click is always pan (viewer-style)
-        controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
-      } else if (space) {
-        controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
-      } else {
-        controls.current.mouseButtons.left = CameraControlsImpl.ACTION.NONE
-      }
+      // Rebuilt from scratch on every modifier change, so the host's overrides
+      // have to be reapplied here too or holding space would drop them.
+      const overrides = cameraInput?.mouseButtons
+
+      controls.current.mouseButtons.wheel = resolveWheelAction(overrides?.wheel, wheelAction)
+      controls.current.mouseButtons.middle = resolveMouseAction(
+        overrides?.middle,
+        CameraControlsImpl.ACTION.SCREEN_PAN,
+      )
+      controls.current.mouseButtons.right = resolveMouseAction(
+        overrides?.right,
+        CameraControlsImpl.ACTION.ROTATE,
+      )
+
+      const defaultLeft =
+        isPreviewMode || space
+          ? CameraControlsImpl.ACTION.SCREEN_PAN
+          : CameraControlsImpl.ACTION.NONE
+
+      controls.current.mouseButtons.left = resolveMouseAction(overrides?.left, defaultLeft)
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -962,9 +1040,10 @@ export const CustomCameraControls = () => {
   }, [
     beginLocalCameraInteraction,
     cameraDraggingLifecycle,
+    cameraInput,
     cameraMode,
     gl,
-    viewerOnlyInput,
+    isPreviewMode,
     isFirstPersonMode,
   ])
 

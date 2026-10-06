@@ -5,6 +5,7 @@ import type { Object3D } from 'three'
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { CameraInputConfig } from '../lib/camera-input'
 import type { EdgeMode } from '../lib/edge-style'
 import type { ColorPreset, RenderShading } from '../lib/materials'
 import { SCENE_THEME_IDS } from '../lib/scene-themes'
@@ -126,6 +127,12 @@ type ViewerState = {
   // scene without a floor. Not persisted — a host-level presentation choice.
   showSiteBoundary: boolean
   setShowSiteBoundary: (show: boolean) => void
+
+  // Host overrides for which gesture drives which camera action, merged over
+  // the defaults rather than replacing them: an unset button keeps whatever
+  // the current mode asked for. Not persisted; a host sets it on mount.
+  cameraInput: CameraInputConfig | null
+  setCameraInput: (input: CameraInputConfig | null) => void
 
   transparentBackground: boolean
   setTransparentBackground: (transparent: boolean) => void
@@ -476,6 +483,9 @@ const useViewer = create<ViewerState>()(
 
       showSiteBoundary: true,
       setShowSiteBoundary: (show) => set({ showSiteBoundary: show }),
+
+      cameraInput: null,
+      setCameraInput: (cameraInput) => set({ cameraInput }),
 
       transparentBackground: false,
       setTransparentBackground: (transparent) => set({ transparentBackground: transparent }),
