@@ -6416,6 +6416,10 @@ export function FloorplanPanel({
       svg.style.transform = `rotate(${
         nextUserRotationDeg - presentationState.initialUserRotationDeg
       }deg)`
+      // The compass sits outside the SVG, so the transform above doesn't carry
+      // it. Without this it holds its last committed heading for the whole
+      // gesture and jumps when the viewport settles.
+      setFloorplanCompassRotation(compassNeedleRef.current, nextUserRotationDeg)
       latestFloorplanUserRotationDegRef.current = nextUserRotationDeg
       latestViewportRef.current = nextViewport
       presentationState.latestUserRotationDeg = nextUserRotationDeg
