@@ -3213,16 +3213,21 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
       ),
     [rotationDeg, steps.minorStep, viewBox],
   )
+  // Keyed on the bounds' values rather than the object, which is what makes
+  // `quantizeGridBounds` worth anything: the quantized bounds hold still across
+  // several steps of travel, but the memo above hands back a fresh object every
+  // time it runs, so depending on that object rebuilt the path every frame
+  // regardless.
   const minorGridPath = useMemo(
     () =>
       buildGridPath(bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.minorStep, {
         excludeStep: steps.majorStep,
       }),
-    [bounds, steps.majorStep, steps.minorStep],
+    [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.majorStep, steps.minorStep],
   )
   const majorGridPath = useMemo(
     () => buildGridPath(bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.majorStep),
-    [bounds, steps.majorStep],
+    [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, steps.majorStep],
   )
 
   if (!showGrid) {

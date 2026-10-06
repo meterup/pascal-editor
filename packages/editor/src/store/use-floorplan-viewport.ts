@@ -23,6 +23,15 @@ export type FloorplanLiveViewBox = {
   height: number
 }
 
+const isSameLiveViewBox = (
+  a: FloorplanLiveViewBox | null,
+  b: FloorplanLiveViewBox | null,
+): boolean => {
+  if (a === b) return true
+  if (!(a && b)) return false
+  return a.minX === b.minX && a.minY === b.minY && a.width === b.width && a.height === b.height
+}
+
 type FloorplanViewportState = {
   /**
    * The view box a gesture is currently showing, or `null` when settled.
@@ -36,7 +45,15 @@ type FloorplanViewportState = {
 
 const useFloorplanViewport = create<FloorplanViewportState>()((set) => ({
   liveViewBox: null,
-  setLiveViewBox: (liveViewBox) => set({ liveViewBox }),
+  setLiveViewBox: (liveViewBox) =>
+    // Publishing an equal-but-new object would still re-render every
+    // subscriber, and the grid's memo chain is keyed on this object's
+    // identity. A rotation is the case that makes it obvious: it moves the
+    // view with a CSS transform and writes the *same* view box every frame,
+    // so without this the grid re-rules 60 times a second to redraw what it
+    // already had. It also defeats `quantizeGridBounds`, which exists so a pan
+    // rebuilds the path once per few steps rather than per frame.
+    set((state) => (isSameLiveViewBox(state.liveViewBox, liveViewBox) ? {} : { liveViewBox })),
 }))
 
 export default useFloorplanViewport
