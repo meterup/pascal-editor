@@ -6629,8 +6629,14 @@ export function FloorplanPanel({
     [floorplanNavigationSyncScheduler],
   )
 
+  // Only on the opening edge. Re-linking an already-open panel is the effect
+  // below, which eases rather than snaps, and this one would land the snap
+  // first and leave that animation nothing to travel.
+  const floorplanPanelWasOpenRef = useRef(false)
   useEffect(() => {
-    if (!isFloorplanOpen) return
+    const wasOpen = floorplanPanelWasOpenRef.current
+    floorplanPanelWasOpenRef.current = isFloorplanOpen
+    if (!isFloorplanOpen || wasOpen) return
 
     const pose = latestNavigationSyncPoseRef.current
     if (!pose) {
@@ -6645,26 +6651,60 @@ export function FloorplanPanel({
     }
   }, [navigationLinked, syncFloorplanViewportToNavigationPose, isFloorplanOpen])
 
-  // Re-linking snaps this view back onto the camera. The camera's pose is
+  // Re-linking eases this view back onto the camera. The camera's pose is
   // pulled rather than waited for, because the bridge would have to push it
   // from an effect, and React destroys every stale subscription before running
   // any effect body: a pose published at that instant reaches no listener.
-  const relinkRevisionRef = useRef(0)
-  useEffect(() => {
-    if (!(navigationLinked && isFloorplanOpen)) return
+  //
+  // The sync scheduler is deliberately not used: it exists to track a live
+  // stream and presents every pose the moment it lands, so a one-shot pose
+  // through it is the jump this replaces. Handing the same decomposition to
+  // the view animator instead gives the re-link the decay the compass needle
+  // and the camera buttons already use.
+  const relinkFloorplanViewToCamera = useCallback(() => {
     const cameraPose = cameraPoseStore.getState().pose
     if (!cameraPose) return
     const navigationPose = cameraPoseToFloorplanNavigationPose(cameraPose)
     if (!navigationPose) return
 
-    relinkRevisionRef.current -= 1
-    syncFloorplanViewportToNavigationPose({
-      ...navigationPose,
-      // Negative and descending, so it can't collide with the positive
-      // revisions the live channels hand out.
-      revision: relinkRevisionRef.current,
+    discardFloorplanNavigationSyncPresentation()
+
+    const userRotationDeg = floorplanRotationFromCameraAzimuth(
+      navigationPose.azimuth,
+      latestFloorplanUserRotationDegRef.current,
+    )
+    const localCenter = worldToFloorplanLocalPoint(
+      navigationPose.target[0],
+      navigationPose.target[2],
+      buildingPosition,
+      buildingRotationY,
+    )
+
+    // Unclamped, matching the live sync path: the camera is the authority on
+    // how wide the view is, and clamping would ease towards a width the
+    // stream would immediately contradict.
+    applyFloorplanNavigationView(localCenter, userRotationDeg, navigationPose.viewWidth, {
+      smooth: true,
+      clampViewWidth: false,
     })
-  }, [navigationLinked, isFloorplanOpen, syncFloorplanViewportToNavigationPose])
+  }, [
+    applyFloorplanNavigationView,
+    buildingPosition,
+    buildingRotationY,
+    discardFloorplanNavigationSyncPresentation,
+  ])
+
+  // Latched so that moving the building, which this reads, can't be mistaken
+  // for a re-link and drag the view off whatever the user is looking at.
+  const floorplanFollowedCameraRef = useRef(false)
+  useEffect(() => {
+    const followsCamera = navigationLinked && isFloorplanOpen
+    const followedCamera = floorplanFollowedCameraRef.current
+    floorplanFollowedCameraRef.current = followsCamera
+    if (!followsCamera || followedCamera) return
+
+    relinkFloorplanViewToCamera()
+  }, [navigationLinked, isFloorplanOpen, relinkFloorplanViewToCamera])
 
   useEffect(() => {
     if (isFloorplanOpen) return
