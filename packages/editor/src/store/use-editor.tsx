@@ -186,6 +186,21 @@ export type GridSnapStep = 0.5 | 0.25 | 0.1 | 0.05
  */
 export type NavigationSyncSource = '2d' | '3d' | 'host'
 
+/**
+ * Who handles pan, rotate and zoom gestures over the 2D floor plan.
+ *
+ * `'builtin'` keeps the editor's own bindings: middle-drag or space and
+ * left-drag to pan, right-drag to rotate, wheel and pinch to zoom.
+ *
+ * `'host'` leaves those gestures alone, for hosts that want their own
+ * bindings. Nothing replaces them, so the host has to drive the view itself
+ * by publishing `'host'` poses through `useEditor.publishNavigationSyncPose`.
+ * Node interaction, selection and the compass are unaffected.
+ *
+ * The plan's counterpart to `CameraNavigationInput`.
+ */
+export type FloorplanNavigationInput = 'builtin' | 'host'
+
 export type NavigationSyncPose = {
   source: NavigationSyncSource
   revision: number
@@ -416,6 +431,12 @@ type EditorState = {
   toggleRiserOpen: () => void
   navigationSyncPose: NavigationSyncPose | null
   publishNavigationSyncPose: (pose: NavigationSyncPoseInput) => void
+
+  // Who handles pan, rotate and zoom over the 2D plan. Claimed by
+  // `useFloorplanNavigation` while it's mounted and released when it isn't, so
+  // ownership can't outlive whatever was honouring it. Not persisted.
+  floorplanNavigationInput: FloorplanNavigationInput
+  setFloorplanNavigationInput: (input: FloorplanNavigationInput) => void
   floorplanSelectionTool: FloorplanSelectionTool
   setFloorplanSelectionTool: (tool: FloorplanSelectionTool) => void
   gridSnapStep: GridSnapStep
@@ -1280,6 +1301,9 @@ const useEditor = create<EditorState>()(
       isRiserOpen: false,
       setRiserOpen: (open) => set({ isRiserOpen: open }),
       toggleRiserOpen: () => set((state) => ({ isRiserOpen: !state.isRiserOpen })),
+      floorplanNavigationInput: 'builtin',
+      setFloorplanNavigationInput: (floorplanNavigationInput) => set({ floorplanNavigationInput }),
+
       navigationSyncPose: null,
       publishNavigationSyncPose: (pose) => {
         const navigationSyncPose = {

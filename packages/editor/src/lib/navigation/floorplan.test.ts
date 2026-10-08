@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { nearestEquivalentRadians } from './host-navigation'
+import { nearestEquivalentRadians } from './floorplan'
 
 const TURN = Math.PI * 2
 const degrees = (radians: number) => (radians * 180) / Math.PI

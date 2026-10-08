@@ -10,6 +10,7 @@ import {
   useScene,
 } from '@pascal-app/core'
 import {
+  type CameraInputConfig,
   type CameraMouseAction,
   type CameraSingleTouchAction,
   type CameraTouchAction,
@@ -413,6 +414,12 @@ const resolveTouchAction = <Fallback,>(
   fallback: Fallback,
 ) => (override ? TOUCH_ACTIONS[override] : fallback)
 
+// Module-level so the selector returning it keeps a stable reference.
+const HOST_OWNED_CAMERA_INPUT: CameraInputConfig = {
+  mouseButtons: { left: 'none', middle: 'none', right: 'none', wheel: 'none' },
+  touches: { one: 'none', two: 'none', three: 'none' },
+}
+
 export const CustomCameraControls = () => {
   const controls = useRef<CameraControlsImpl | null>(null)
   const pendingAppliedPose = useRef<CameraPoseApplicationPlan | null>(null)
@@ -429,7 +436,12 @@ export const CustomCameraControls = () => {
     right: false,
   })
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
-  const cameraInput = useViewer((s) => s.cameraInput)
+  // A host taking the camera outright says the same thing as binding every
+  // gesture to nothing, so it resolves to exactly that. Keeps it from being a
+  // second mechanism every binding site has to remember.
+  const cameraInput = useViewer((s) =>
+    s.cameraNavigationInput === 'host' ? HOST_OWNED_CAMERA_INPUT : s.cameraInput,
+  )
   const isFirstPersonMode = useEditor((s) => s.isFirstPersonMode)
   const allowUndergroundCamera = useEditor((s) => s.allowUndergroundCamera)
   const selection = useViewer((s) => s.selection)

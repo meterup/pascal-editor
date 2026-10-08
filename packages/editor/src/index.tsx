@@ -39,7 +39,6 @@ export type {
 } from './components/editor/floorplan-divider-slot'
 export type {
   FloorplanBackgroundContext,
-  FloorplanNavigationInput,
   FloorplanPanelPalette,
 } from './components/editor/floorplan-panel'
 // Embed surface — the editor's real in-canvas affordances, so a host can mount
@@ -460,11 +459,6 @@ export {
   runUndo,
   subscribeHistoryCommandState,
 } from './lib/history'
-export type {
-  FloorplanAnimationOptions,
-  FloorplanNavigationControls,
-} from './lib/host-navigation'
-export { useFloorplanNavigationControls } from './lib/host-navigation'
 export {
   type EditorHostTreeChildren,
   type EditorHostTreeChildrenProps,
@@ -520,6 +514,17 @@ export {
   metersToLinearUnit,
   squareMetersToAreaUnit,
 } from './lib/measurements'
+export type {
+  CameraNavigationControls,
+  CameraNavigationOptions,
+} from './lib/navigation/camera'
+export { useCameraNavigation } from './lib/navigation/camera'
+export type {
+  FloorplanAnimationOptions,
+  FloorplanNavigation,
+  FloorplanNavigationOptions,
+} from './lib/navigation/floorplan'
+export { useFloorplanNavigation } from './lib/navigation/floorplan'
 export { consumePlacementDragRelease } from './lib/placement-drag-release'
 export {
   addFreshPlacementMetadata,
@@ -550,6 +555,7 @@ export { clearRoofDuplicateMetadata, duplicateRoofSubtree } from './lib/roof-dup
 export { hasRoofFaceChildOverlap, type RoofWallHit, resolveRoofWallHit } from './lib/roof-wall-hit'
 export type { SceneGraph } from './lib/scene'
 export { applySceneGraphToEditor } from './lib/scene'
+export { computeSceneBoundsXZ, type SceneBoundsXZ } from './lib/scene-bounds'
 export { movementSfxStepKey } from './lib/sfx/movement-tick'
 export { triggerSFX } from './lib/sfx-bus'
 export { playSFX, type SFXName, type SFXPlaybackOptions } from './lib/sfx-player'
@@ -608,6 +614,7 @@ export {
 } from './store/use-drawing-view'
 export type {
   CaptureMode,
+  FloorplanNavigationInput,
   FloorplanSelectionTool,
   NavigationSyncPose,
   NavigationSyncPoseInput,

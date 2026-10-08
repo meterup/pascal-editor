@@ -32,6 +32,16 @@ export type CameraSingleTouchAction = 'none' | 'pan' | 'rotate'
 export type CameraTouchAction = CameraSingleTouchAction | 'zoom' | 'dolly' | 'zoomPan' | 'dollyPan'
 
 /**
+ * Who handles the 3D camera's gestures.
+ *
+ * `'host'` stands the built-in ones down so a host can bind its own, and is
+ * the camera's counterpart to the floor plan's `floorplanNavigationInput`.
+ * Distinct from the bindings below, which reconfigure the built-in handling
+ * rather than turning it off.
+ */
+export type CameraNavigationInput = 'builtin' | 'host'
+
+/**
  * Host overrides for the 3D camera's input bindings.
  *
  * Merged over whatever the current mode asked for, so an unset entry keeps its

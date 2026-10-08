@@ -18,10 +18,11 @@ import { animate } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import useEditor, {
+  type FloorplanNavigationInput,
   type NavigationSyncPose,
   type NavigationSyncPoseInput,
-} from '../store/use-editor'
-import useFloorplanViewport from '../store/use-floorplan-viewport'
+} from '../../store/use-editor'
+import useFloorplanViewport from '../../store/use-floorplan-viewport'
 
 /** Smallest view width we'll zoom to, in metres. Matches the playground. */
 const MIN_VIEW_WIDTH = 0.5
@@ -49,7 +50,18 @@ export type FloorplanAnimationOptions = {
   durationMs?: number
 }
 
-export type FloorplanNavigationControls = {
+export type FloorplanNavigationOptions = {
+  /**
+   * Who handles the plan's gestures. Defaults to `'builtin'`.
+   *
+   * Claimed while this hook is mounted and released when it isn't, so
+   * ownership can't outlive whatever was honouring it. Declaring it apart from
+   * the thing doing the work is how you get a plan nobody is driving.
+   */
+  input?: FloorplanNavigationInput
+}
+
+export type FloorplanNavigation = {
   /**
    * The plan's current pose, or `null` before it has published one.
    *
@@ -98,7 +110,7 @@ export type FloorplanNavigationControls = {
  * Pairs with a gesture library without any pose arithmetic at the call site:
  *
  * ```tsx
- * const plan = useFloorplanNavigationControls()
+ * const plan = useFloorplanNavigation()
  * useGesture({
  *   onDrag: ({ delta: [dx, dy] }) => plan.panByPixels(-dx, -dy),
  *   onPinch: ({ offset: [scale] }) => plan.zoomTo(scale),
@@ -111,8 +123,21 @@ export type FloorplanNavigationControls = {
  *
  * @returns The current pose, the pixel conversion, and the commands
  */
-export const useFloorplanNavigationControls = (): FloorplanNavigationControls => {
+export const useFloorplanNavigation = (
+  options?: FloorplanNavigationOptions,
+): FloorplanNavigation => {
   const animationRef = useRef<{ stop: () => void } | null>(null)
+  const input = options?.input
+
+  useEffect(() => {
+    if (!input) return undefined
+
+    useEditor.getState().setFloorplanNavigationInput(input)
+
+    return () => {
+      useEditor.getState().setFloorplanNavigationInput('builtin')
+    }
+  }, [input])
 
   const getPose = useCallback(() => useEditor.getState().navigationSyncPose, [])
 
