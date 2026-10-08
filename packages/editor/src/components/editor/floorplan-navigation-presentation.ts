@@ -1,3 +1,5 @@
+import { publishFloorplanHeading } from '../../lib/floorplan-heading'
+
 export type FloorplanPresentationViewBox = {
   minX: number
   minY: number
@@ -9,6 +11,10 @@ export function setFloorplanCompassRotation(
   compass: { style: { transform: string } } | null,
   rotationDeg: number,
 ): void {
+  // Outside the null check on purpose. A host that replaced the compass never
+  // attaches the needle ref, so this is the only heading signal it gets.
+  publishFloorplanHeading(rotationDeg)
+
   if (compass) {
     compass.style.transform = `rotate(${rotationDeg}deg)`
   }

@@ -440,6 +440,10 @@ export {
   isFloorplanToolAvailableInMode,
 } from './lib/floorplan/floorplan-mode'
 export {
+  getFloorplanHeading,
+  subscribeFloorplanHeading,
+} from './lib/floorplan-heading'
+export {
   commitFreshPlacementSubtree,
   createFreshPlacementSubtree,
   duplicatesAsFreshSubtree,
@@ -456,6 +460,11 @@ export {
   runUndo,
   subscribeHistoryCommandState,
 } from './lib/history'
+export type {
+  FloorplanAnimationOptions,
+  FloorplanNavigationControls,
+} from './lib/host-navigation'
+export { useFloorplanNavigationControls } from './lib/host-navigation'
 export {
   type EditorHostTreeChildren,
   type EditorHostTreeChildrenProps,

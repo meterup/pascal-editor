@@ -89,6 +89,7 @@ import {
   type FloorplanNodeTransform as SharedFloorplanNodeTransform,
   worldToFloorplanLocalPoint,
 } from '../../lib/floorplan'
+import { subscribeFloorplanHeading } from '../../lib/floorplan-heading'
 import { groundHeightAt } from '../../lib/ground-surface'
 import { guideEmitter } from '../../lib/guide-events'
 import { measurementHint, parseMeasurement } from '../../lib/measurement-parser'
@@ -194,7 +195,6 @@ import {
   WALL_JOIN_SNAP_RADIUS,
   type WallPlanPoint,
 } from '../tools/wall/wall-drafting'
-
 import { PALETTE_COLORS } from '../ui/primitives/color-dot'
 import {
   FloorplanCompassButton,
@@ -6843,10 +6843,15 @@ export function FloorplanPanel({
 
     const updateSize = () => {
       const rect = host.getBoundingClientRect()
-      setSurfaceSize({
+      const size = {
         width: Math.max(rect.width, 1),
         height: Math.max(rect.height, 1),
-      })
+      }
+      setSurfaceSize(size)
+      // Published as well as kept in state so a host can convert screen-space
+      // deltas into scene units. A navigation pose carries only its width in
+      // metres, which isn't enough on its own.
+      useFloorplanViewport.getState().setSurfaceSize(size)
     }
 
     updateSize()
@@ -7476,26 +7481,26 @@ export function FloorplanPanel({
   // `navigationSyncPose` is only ever written as a side effect of navigating,
   // so it starts null. That is fine for the built-in gestures, which work from
   // their own refs, but a host navigating relative to the current view has
-  // nothing to read and no way to take the first step. Seed it once the
-  // viewport exists so the store describes the live 2D view.
+  // nothing to read and no way to take the first step. Republish whenever the
+  // committed viewport changes, so the store keeps describing the live 2D view.
   //
-  // Only where the seed can't move anything on its own, though. It publishes a
+  // Every commit rather than once: a single seed goes stale the moment the plan
+  // moves any other way, most obviously the initial fit, which lands after the
+  // first viewport exists. A host reading a stale pose and publishing it back
+  // would drag the plan to wherever the seed was taken.
+  //
+  // Only where this can't move anything on its own, though. It publishes a
   // `'2d'` pose, which while linked drives the camera, and the plan's view
-  // width is its own fit rather than the camera's, so seeding unconditionally
-  // would rezoom the 3D view on mount. Unlinked the bridge is inactive, and
-  // host-owned input is an explicit opt-in, so both are safe.
+  // width is its own fit rather than the camera's, so doing it unconditionally
+  // would rezoom the 3D view. Unlinked the bridge is inactive, and host-owned
+  // input is an explicit opt-in, so both are safe.
   //
   // `viewBox` is in the dependencies as a re-render signal, not because the
   // body reads it: the viewport lives in refs, which can't wake an effect, and
   // on first mount they are still empty. Dropping it means never seeding.
   const canSeedNavigationPose = hostOwnsNavigation || !navigationLinked
-  const hasSeededNavigationPoseRef = useRef(false)
   useEffect(() => {
-    if (!canSeedNavigationPose || hasSeededNavigationPoseRef.current) return
-    if (useEditor.getState().navigationSyncPose) {
-      hasSeededNavigationPoseRef.current = true
-      return
-    }
+    if (!canSeedNavigationPose) return
     const viewport = latestViewportRef.current ?? latestFittedViewportRef.current
     if (!viewport) return
 
@@ -7505,7 +7510,6 @@ export function FloorplanPanel({
       { x: viewport.centerX, y: viewport.centerY },
       -sceneRotationDeg,
     )
-    hasSeededNavigationPoseRef.current = true
     publishFloorplanNavigationPose(localCenter, userRotationDeg, viewport.width)
   }, [buildingRotationDeg, canSeedNavigationPose, publishFloorplanNavigationPose, viewBox])
 
@@ -11251,6 +11255,7 @@ export function FloorplanPanel({
     northRotationDeg: floorplanUserRotationDeg,
     alignToNorth: alignFloorplanViewToNorth,
     needleRef: compassNeedleRef,
+    onHeadingChange: subscribeFloorplanHeading,
   }
   const compassControl = floorplanCompassSlot ? (
     floorplanCompassSlot(compassContext)
