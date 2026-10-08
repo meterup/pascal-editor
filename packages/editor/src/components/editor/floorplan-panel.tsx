@@ -5987,14 +5987,24 @@ export function FloorplanPanel({
   useEffect(() => {
     usePlacementPreview.getState().clear()
   }, [levelId])
+  // Both box selections are withheld on a locked plan, the same way the 3D view
+  // withholds its own. Selecting a set is only ever a prelude to acting on it,
+  // and the group affordances that follow are what make a plain drag move walls
+  // around a scene that can't accept the change.
+  //
+  // `mode === 'select'` isn't enough on its own: select is the one mode a
+  // read-only scene is allowed to be in, so these are the affordances the mode
+  // clamp can't reach.
   const isMarqueeSelectionToolActive =
     mode === 'select' &&
+    !sceneReadOnly &&
     floorplanSelectionTool === 'marquee' &&
     !movingNode &&
     !isFenceEndpointMoveActive &&
     structureLayer !== 'zones'
   const isScreenSelectionToolActive =
     mode === 'select' &&
+    !sceneReadOnly &&
     floorplanSelectionTool === 'click' &&
     (phase === 'structure' || phase === 'furnish') &&
     !movingNode &&
@@ -10735,6 +10745,14 @@ export function FloorplanPanel({
         return
       }
 
+      // A locked plan has nothing to box-select and act on, and the 3D view
+      // already withholds its own marquee on the same grounds. Leaving this one
+      // live means a plain drag paints a selection box over a view the user is
+      // only trying to move around.
+      if (sceneReadOnly) {
+        return
+      }
+
       const planPoint = getPlanPointFromClientPoint(event.clientX, event.clientY)
       if (!planPoint) {
         return
@@ -10765,6 +10783,7 @@ export function FloorplanPanel({
     },
     [
       getPlanPointFromClientPoint,
+      sceneReadOnly,
       syncPreviewSelectedIds,
       setFloorplanCursorPosition,
       setCursorPoint,
