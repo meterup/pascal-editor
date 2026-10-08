@@ -1,6 +1,6 @@
 {
   "name": "@pascal-app/capture-viewer",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "Open capture-session runtime and reference renderers for the Pascal viewer",
   "type": "module",
   "main": "./dist/index.js",

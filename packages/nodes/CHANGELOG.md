@@ -1,6 +1,6 @@
-# Changelog
+# @pascal-app/nodes
 
-## 1.0.0-beta.7
+## 1.0.0-beta.6
 
 ### Minor Changes
 
@@ -52,40 +52,30 @@
     same-origin blob URLs never hit the split in the first place, and the flag is
     actively wrong for guide images served without CORS headers.
 
-All notable changes to `@pascal-app/mcp` will be documented in this file.
+### Patch Changes
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- e1d3a5a: Add `showSiteBoundary` to hide the site's boundary geometry.
 
-## [0.1.0] - 2026-04-18
+  The boundary was always drawn, with no way to turn it off. It is a useful
+  reference while laying out a site and pure noise on a surface that only presents
+  a finished building.
 
-### Added
+  `showSiteBoundary` joins `useViewer` next to `showGrid` / `showZones` and
+  governs both views from one flag, because it is the same polygon in each:
 
-- Initial release.
-- `SceneBridge` headless adapter for `@pascal-app/core` with RAF polyfill so
-  the Zustand store and Zundo temporal middleware run cleanly in Node.
-- 19 MCP tools covering scene querying (`get_scene`, `get_node`,
-  `describe_node`, `find_nodes`, `measure`), mutation (`apply_patch`,
-  `create_level`, `create_wall`, `place_item`, `cut_opening`, `set_zone`,
-  `duplicate_level`, `delete_node`), undo/redo (`undo`, `redo`), export
-  (`export_json`, `export_glb`), validation (`validate_scene`,
-  `check_collisions`), plus 2 vision tools (`analyze_floorplan_image`,
-  `analyze_room_photo`) backed by MCP sampling.
-- 4 MCP resources: `pascal://scene/current`,
-  `pascal://scene/current/summary`, `pascal://catalog/items`, and
-  `pascal://constraints/{levelId}`.
-- 3 MCP prompts: `from_brief`, `iterate_on_feedback`, and
-  `renovation_from_photos`.
-- stdio and Streamable HTTP transports.
-- `pascal-mcp` CLI binary with `--stdio`, `--http --port`, and `--scene`
-  flags.
-- Local `SqliteSceneStore` backed by built-in SQLite drivers (`bun:sqlite` in
-  the MCP CLI, `node:sqlite` in the Next.js editor server), with WAL mode,
-  transaction-scoped optimistic locking, revision rows, and shared
-  `PASCAL_DATA_DIR` / `PASCAL_DB_PATH` configuration for MCP and the editor.
+  ```ts
+  useViewer.getState().setShowSiteBoundary(false);
+  ```
 
-### Removed
+  In 2D that drops the dashed polygon, its edge labels and its handles. In 3D it
+  drops the ground pad and the amber outline. Buildings, items and the horizon
+  ground are unaffected, so the scene loses its lot outline rather than its floor
+  — the horizon disc punches holes for slab footprints, not for the site polygon,
+  so it still covers the ground the pad was covering.
 
-- Supabase storage adapter, SQL migrations, and the `@supabase/supabase-js`
-  runtime dependency.
-- Committed MCP `test-reports/` development artifacts.
+  Two things stay deliberately outside the flag. The fitted viewport still sizes
+  itself from the site polygon, so toggling this doesn't reframe the plan. And
+  sculpted terrain keeps rendering, since that is modelled geometry rather than
+  boundary chrome.
+
+  Defaults to `true` and isn't persisted, so nothing changes until a host sets it.
