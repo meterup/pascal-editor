@@ -21,15 +21,26 @@ import { extname, join } from "node:path";
 // `${SCOPE}/pascal-core`, so the `import` specifiers in dist/** (and editor's
 // shipped src) have to match.
 //
-// To target a different scope (e.g. @meterup) set PUBLISH_SCOPE — that is the
-// only thing that changes. Auth comes from .npmrc (NODE_AUTH_TOKEN).
+// To target a different scope (e.g. @meterup) set PUBLISH_SCOPE, and
+// PUBLISH_REPOSITORY to the "owner/repo" that should own the packages. Auth
+// comes from .npmrc (NODE_AUTH_TOKEN).
+//
+// A workstation run and a CI run produce the same artifacts. Nothing here keys
+// off GITHUB_ACTIONS, because a release published by hand is still a release:
+// it needs the same git tags, the same GitHub Releases, and the same
+// repository link on each package.
 //
 // With --snapshot (run after `bun changeset` + `bun run build`): mints
 // 0.0.0-snapshot-<timestamp> versions via `changeset version --snapshot`,
 // publishes them to the `snapshot` dist-tag (leaving `latest` untouched), and
-// skips git tags / GitHub Releases. It dirties the working tree (version bumps +
-// consumed changesets) — discard with `git checkout .` afterward; CI is ephemeral.
-// A clean tree is required up front so that discard is unambiguous.
+// skips git tags / GitHub Releases. It dirties the working tree, and a clean
+// tree is required up front so the cleanup is unambiguous:
+//
+//   git checkout . && git clean -f -- '*/CHANGELOG.md'
+//
+// `git checkout .` alone is not enough. `changeset version` creates a
+// CHANGELOG.md for any package that doesn't have one yet, and an untracked
+// file survives a checkout.
 
 /** Whether changesets is holding a prerelease line (`changeset pre enter`). */
 const inPreMode = (): boolean => {
@@ -46,7 +57,6 @@ const NAME_PREFIX = "pascal-"; // always prefix published names under the fork s
 const TARGET_PREFIX = `${SCOPE}/${NAME_PREFIX}`; // e.g. "@meterup/pascal-"
 const REGISTRY = "https://npm.pkg.github.com";
 const DRY_RUN = process.argv.includes("--dry-run");
-const IN_CI = process.env.GITHUB_ACTIONS === "true";
 // --snapshot: mint ephemeral 0.0.0-snapshot-<timestamp> versions and publish them
 // to the `snapshot` dist-tag instead of `latest` (see changesets snapshot releases).
 const SNAPSHOT = process.argv.includes("--snapshot");
@@ -55,8 +65,20 @@ const SNAPSHOT_TAG = "snapshot"; // both the changesets snapshot id and the dist
 // default. The fork's stable line is 0.9.x and the beta line is 1.0.0-beta.N,
 // so while pre mode holds, published betas go to the `beta` dist-tag instead.
 const DIST_TAG = SNAPSHOT ? SNAPSHOT_TAG : inPreMode() ? "beta" : "latest";
-// "owner/repo" of the publishing fork in CI; used to link packages to this repo.
-const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
+// Mark GitHub Releases as prereleases for the same reason, so a beta doesn't
+// take "Latest" on the releases page from the stable line.
+const RELEASE_FLAGS = inPreMode() ? ["--prerelease"] : [];
+// Used when a package has no CHANGELOG entry for the version, which happens for
+// a package bumped only because a dependency moved.
+const FALLBACK_NOTES = "Published to GitHub Packages.";
+// "owner/repo" that should own the published packages. GitHub links a package
+// to a repo by the `repository.url` in its manifest, and only on first publish.
+// Falling back to nothing when GITHUB_REPOSITORY is unset (i.e. anywhere but
+// Actions) meant a package first published from a workstation was created
+// standalone and private, which then denied the repo's own GITHUB_TOKEN write
+// access to it forever after.
+const REPOSITORY =
+  process.env.PUBLISH_REPOSITORY ?? process.env.GITHUB_REPOSITORY ?? "meterup/pascal-editor";
 
 // Files whose contents may reference the scope. Note extname("x.d.ts") === ".ts".
 const TEXT_EXT = new Set([
@@ -90,6 +112,12 @@ const ownedNames = new Set(
     .filter((name): name is string => name !== null && name.startsWith(SOURCE_PREFIX)),
 );
 
+/** Rewrite our own `@pascal-app/*` names to `${TARGET_PREFIX}*` in a blob of text. */
+const rescopeText = (text: string): string =>
+  text.replace(SCOPED_NAME, (name) =>
+    ownedNames.has(name) ? name.replace(SOURCE_PREFIX, TARGET_PREFIX) : name,
+  );
+
 /** Rewrite our own `@pascal-app/*` names to `${TARGET_PREFIX}*` across a packed package. */
 const rewriteScope = (dir: string): void => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -101,9 +129,7 @@ const rewriteScope = (dir: string): void => {
     if (!TEXT_EXT.has(extname(entry.name))) continue;
     const before = readFileSync(path, "utf8");
     if (!before.includes(SOURCE_PREFIX)) continue;
-    const after = before.replace(SCOPED_NAME, (name) =>
-      ownedNames.has(name) ? name.replace(SOURCE_PREFIX, TARGET_PREFIX) : name,
-    );
+    const after = rescopeText(before);
     if (after !== before) writeFileSync(path, after);
   }
 };
@@ -123,6 +149,32 @@ const relinkRepository = (packageDir: string, repo: string, directory: string): 
       ? url
       : { type: "git", ...manifest.repository, url, directory };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+};
+
+/**
+ * The CHANGELOG entry for one version, ready to use as GitHub Release notes,
+ * or null when the package has no entry for it.
+ *
+ * Changesets writes the changelog against the source names, so the text is
+ * rescoped to match what was actually published.
+ */
+const releaseNotesFor = (packageDir: string, version: string): string | null => {
+  let changelog: string;
+  try {
+    changelog = readFileSync(join(packageDir, "CHANGELOG.md"), "utf8");
+  } catch {
+    return null;
+  }
+  // Sections run from `## <version>` to the next `## ` at the start of a line.
+  // Anchored on the newline so `## 1.0.0-beta.5` can't match inside
+  // `## 1.0.0-beta.50`, and so a heading mentioned mid-prose is ignored.
+  const heading = `\n## ${version}\n`;
+  const start = changelog.indexOf(heading);
+  if (start === -1) return null;
+  const bodyStart = start + heading.length;
+  const end = changelog.indexOf("\n## ", bodyStart);
+  const body = changelog.slice(bodyStart, end === -1 ? undefined : end).trim();
+  return body ? rescopeText(body) : null;
 };
 
 // Snapshot mode mints throwaway versions from the pending changesets. Only
@@ -148,7 +200,7 @@ if (SNAPSHOT && !DRY_RUN) {
   await $`bun install`;
 }
 
-const newTags: string[] = [];
+const published: { tag: string; dir: string; version: string }[] = [];
 
 for (const dir of readdirSync("packages")) {
   let manifest: { name?: string; version?: string; private?: boolean };
@@ -177,7 +229,7 @@ for (const dir of readdirSync("packages")) {
 
     const packed = join(work, "package");
     rewriteScope(packed);
-    if (GITHUB_REPOSITORY) relinkRepository(packed, GITHUB_REPOSITORY, `packages/${dir}`);
+    relinkRepository(packed, REPOSITORY, `packages/${dir}`);
 
     if (DRY_RUN) {
       console.log(`→ [dry-run] ${tag}`);
@@ -186,7 +238,7 @@ for (const dir of readdirSync("packages")) {
 
     console.log(`→ Publishing ${tag} (dist-tag: ${DIST_TAG})`);
     await $`npm publish ${packed} --ignore-scripts --registry ${REGISTRY} --tag ${DIST_TAG}`;
-    newTags.push(tag);
+    published.push({ tag, dir, version: manifest.version ?? "" });
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -199,10 +251,12 @@ for (const dir of readdirSync("packages")) {
 // + release here, named after what was actually published. Best-effort so a
 // re-run (tag/release already exists) doesn't fail the job. Skipped for
 // snapshots — they're ephemeral and shouldn't leave tags/releases behind.
-if (!SNAPSHOT && IN_CI && newTags.length > 0) {
-  for (const tag of newTags) await $`git tag ${tag}`.nothrow();
-  await $`git push origin ${newTags}`.nothrow();
-  for (const tag of newTags) {
-    await $`gh release create ${tag} --title ${tag} --notes ${"Published to GitHub Packages."}`.nothrow();
+if (!SNAPSHOT && published.length > 0) {
+  const tags = published.map(({ tag }) => tag);
+  for (const tag of tags) await $`git tag ${tag}`.nothrow();
+  await $`git push origin ${tags}`.nothrow();
+  for (const { tag, dir, version } of published) {
+    const notes = releaseNotesFor(join("packages", dir), version) ?? FALLBACK_NOTES;
+    await $`gh release create ${tag} --title ${tag} --notes ${notes} ${RELEASE_FLAGS}`.nothrow();
   }
 }
