@@ -16,4 +16,4 @@ inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/282b784cd824b62d06843974633c684ef2dfd6f3
   nixpkgs-bun:
-    url: github:NixOS/nixpkgs/832e3b6db48508ae436c2c7bfc0cf914eac6938e
+    url: github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410
