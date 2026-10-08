@@ -1,6 +1,6 @@
-# Changelog
+# @pascal-app/core
 
-## 1.0.0-beta.7
+## 1.0.0-beta.6
 
 ### Minor Changes
 
@@ -52,40 +52,57 @@
     same-origin blob URLs never hit the split in the first place, and the flag is
     actively wrong for guide images served without CORS headers.
 
-All notable changes to `@pascal-app/mcp` will be documented in this file.
+### Patch Changes
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- 2251db5: Add an `alignmentGuideStroke` slot to `FloorplanPalette` and draw the 2D snap
+  guides from it.
 
-## [0.1.0] - 2026-04-18
+  `FloorplanAlignmentGuideLayer` hardcoded `#ef4444`, so the one piece of 2D
+  chrome most visible during a drag was the one piece a theme couldn't reach.
+  It already consumes the render context, so it now reads the slot and keeps the
+  red as its no-provider fallback.
 
-### Added
+- 5ea6e96: Let plugins type their node kinds into `AnyNode` by declaration merging.
 
-- Initial release.
-- `SceneBridge` headless adapter for `@pascal-app/core` with RAF polyfill so
-  the Zustand store and Zundo temporal middleware run cleanly in Node.
-- 19 MCP tools covering scene querying (`get_scene`, `get_node`,
-  `describe_node`, `find_nodes`, `measure`), mutation (`apply_patch`,
-  `create_level`, `create_wall`, `place_item`, `cut_opening`, `set_zone`,
-  `duplicate_level`, `delete_node`), undo/redo (`undo`, `redo`), export
-  (`export_json`, `export_glb`), validation (`validate_scene`,
-  `check_collisions`), plus 2 vision tools (`analyze_floorplan_image`,
-  `analyze_room_photo`) backed by MCP sampling.
-- 4 MCP resources: `pascal://scene/current`,
-  `pascal://scene/current/summary`, `pascal://catalog/items`, and
-  `pascal://constraints/{levelId}`.
-- 3 MCP prompts: `from_brief`, `iterate_on_feedback`, and
-  `renovation_from_photos`.
-- stdio and Streamable HTTP transports.
-- `pascal-mcp` CLI binary with `--stdio`, `--http --port`, and `--scene`
-  flags.
-- Local `SqliteSceneStore` backed by built-in SQLite drivers (`bun:sqlite` in
-  the MCP CLI, `node:sqlite` in the Next.js editor server), with WAL mode,
-  transaction-scoped optimistic locking, revision rows, and shared
-  `PASCAL_DATA_DIR` / `PASCAL_DB_PATH` configuration for MCP and the editor.
+  Plugin kinds were absent from `AnyNode`, `AnyNodeType` and `AnyNodeId`, so
+  plugin code and anything consuming it had to widen to `string` or cast. Ids
+  made it worse: `objectId` produces `` `${kind}_${string}` ``, so a plugin node's
+  id was never assignable to `AnyNodeId` and generic scene code reached for
+  `as AnyNodeId`.
 
-### Removed
+  Declare kinds in `PluginNodes` and they join all three unions, which restores
+  exhaustive `switch`es and drops the casts:
 
-- Supabase storage adapter, SQL migrations, and the `@supabase/supabase-js`
-  runtime dependency.
-- Committed MCP `test-reports/` development artifacts.
+  ```ts
+  declare module "@pascal-app/core/plugin-nodes" {
+    interface PluginNodes {
+      tree: z.infer<typeof TreeNode>;
+    }
+  }
+  ```
+
+  Purely type-level and additive. The interface ships empty, `PluginNodeType`
+  resolves to `never`, and `AnyNode` stays exactly equal to the new `BuiltinNode`
+  alias, so a host with no plugins sees no change at all. There is no runtime
+  component and no API signature churn; `nodeRegistry.get` still takes `string`,
+  which it has to, since `setPluginDiscovery` allows kinds that were never
+  compiled against.
+
+  Two design points worth knowing:
+
+  The interface lives in its own module and is reachable only at
+  `@pascal-app/core/plugin-nodes`. `declare module` merges only with the module
+  that declares the interface, and the package entry is a pure barrel, so
+  augmenting `@pascal-app/core` would quietly declare an unrelated second
+  interface and widen nothing. Nothing else is exported from that module, so an
+  augmentation has nothing to shadow.
+
+  `PluginNode` adds the common `BaseNode` fields and takes `type` from the key
+  rather than trusting the declared shape. `AnyNode` is a union, and a union only
+  exposes properties present on every member, so a declaration that
+  under-described itself would silently strip `parentId` and friends from
+  `AnyNode` across the entire host, with the errors landing in host code far from
+  the plugin responsible.
+
+- Updated dependencies [2f5c4e1]
+  - @pascal-app/capture-protocol@1.0.0-beta.5
