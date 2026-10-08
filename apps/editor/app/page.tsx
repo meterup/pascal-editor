@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
 import {
+  hostCompassSlot,
   NAVIGATION_PLAYGROUND_DEFAULTS,
   NavigationPlayground,
   TINTED_FLOORPLAN_PALETTE,
@@ -114,7 +115,13 @@ export default function Home() {
       )}
       <Editor
         appearance={playground.appearance}
-        floorplanNavigationInput={playground.navigationInput}
+        floorplanCompassSlot={
+          playground.compass === 'builtin'
+            ? undefined
+            : playground.compass === 'none'
+              ? () => null
+              : hostCompassSlot
+        }
         floorplanNavigationLink={playground.navigationLink}
         floorplanPalette={playground.tintPalette ? TINTED_FLOORPLAN_PALETTE : undefined}
         layoutVersion="v2"
