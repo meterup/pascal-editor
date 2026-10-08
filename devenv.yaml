@@ -1,0 +1,19 @@
+# `nixpkgs` is pinned to the same revision as the `meterup/frontends` checkout so
+# that both resolve to identical store paths for the toolchain they share, and so
+# a build in one warms the other's cache.
+#
+# `nixpkgs-bun` exists only to supply bun. A nixpkgs revision carries exactly one
+# bun release, and the one `packageManager` asks for is not the one the main pin
+# holds, so bun comes from its own revision rather than a version+hash override:
+# bun ships prebuilt per-platform zips, so overriding would mean hand-maintaining
+# a hash for each of the four systems.
+inputs:
+  devenv:
+    url: github:cachix/devenv
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+  nixpkgs:
+    url: github:NixOS/nixpkgs/282b784cd824b62d06843974633c684ef2dfd6f3
+  nixpkgs-bun:
+    url: github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410
