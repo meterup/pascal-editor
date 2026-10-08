@@ -222,4 +222,31 @@ The boundary stays narrow on purpose so the contract is shippable. Each "not yet
 2. In a host app that consumes your built-ins (`apps/editor` is the easiest target), wire `setPluginDiscovery` to return your plugin.
 3. The dev-mode `[pascal:registry]` console log shows the loaded plugin id + node count — that's the verification anchor.
 
-The host's own parity test (`packages/nodes/src/index.test.ts`) asserts every `AnyNode` discriminator has a registered kind. Plugin-contributed kinds don't participate in that test (they're not in `AnyNode`); add an equivalent test on your own side if you maintain a hand-typed union elsewhere.
+The host's own parity test (`packages/nodes/src/index.test.ts`) asserts every `AnyNode` *schema* discriminator has a registered kind. Plugin kinds don't participate: they're in the `AnyNode` type once declared (see below), but never in the Zod union.
+
+## Typing your kinds into `AnyNode`
+
+Declare your kinds in `PluginNodes` and they join `AnyNode`, `AnyNodeType` and `AnyNodeId` for anything compiled against your plugin:
+
+```ts
+import type { z } from '@pascal-app/core'
+import type { TreeNode } from './schema'
+
+declare module '@pascal-app/core/plugin-nodes' {
+  interface PluginNodes {
+    tree: z.infer<typeof TreeNode>
+  }
+}
+```
+
+Augment that subpath, not `@pascal-app/core`. `declare module` merges only with the module that declares the interface, and the package entry just re-exports it, so augmenting the entry declares an unrelated second interface and widens nothing.
+
+The key is the `type` discriminant and is authoritative: `type` is taken from it, so it can't be omitted or drift. The common `BaseNode` fields are added for you. Your shape does need to carry its own `id`, because the prefix is your kind's business and widening it would collapse `AnyNodeId` for every consumer.
+
+Three things it isn't:
+
+- **Not a runtime claim.** Plugins register asynchronously, so a declared kind still reads `undefined` from `nodeRegistry.get` until your plugin loads. The registry stays the only source of truth.
+- **Not validation.** `AnyNode` the schema parses built-ins only; your nodes are validated by your own `def.schema`.
+- **Not exhaustive.** Kinds discovered at runtime through `setPluginDiscovery` can't appear in any union, so APIs taking a kind still accept `string`.
+
+If you maintain a hand-typed union of your own kinds elsewhere, derive it from your definitions rather than mirroring it, and add a test that every kind your `Plugin` registers appears in it. A mirror only guards the edge you remember to guard.

@@ -46,6 +46,7 @@ import { TurbineVentNode } from './nodes/turbine-vent'
 import { WallNode } from './nodes/wall'
 import { WindowNode } from './nodes/window'
 import { ZoneNode } from './nodes/zone'
+import type { PluginNode } from './plugin-nodes'
 
 export const AnyNode = z.discriminatedUnion('type', [
   SiteNode,
@@ -98,6 +99,16 @@ export const AnyNode = z.discriminatedUnion('type', [
   PipeTrapNode,
 ])
 
-export type AnyNode = z.infer<typeof AnyNode>
+/** Every node kind the host defines itself, as parsed by {@link AnyNode}. */
+export type BuiltinNode = z.infer<typeof AnyNode>
+
+/**
+ * Every node kind this build can contain: the host's own, plus whatever
+ * plugins have declared through {@link PluginNodes}.
+ *
+ * Identical to {@link BuiltinNode} when no plugin has augmented, since an
+ * empty `PluginNodes` makes `PluginNode` resolve to `never`.
+ */
+export type AnyNode = BuiltinNode | PluginNode
 export type AnyNodeType = AnyNode['type']
 export type AnyNodeId = AnyNode['id']

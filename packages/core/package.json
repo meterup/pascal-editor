@@ -31,6 +31,11 @@
       "import": "./dist/schema/index.js",
       "default": "./dist/schema/index.js"
     },
+    "./plugin-nodes": {
+      "types": "./dist/schema/plugin-nodes.d.ts",
+      "import": "./dist/schema/plugin-nodes.js",
+      "default": "./dist/schema/plugin-nodes.js"
+    },
     "./store": {
       "types": "./dist/store/use-scene.d.ts",
       "import": "./dist/store/use-scene.js",
