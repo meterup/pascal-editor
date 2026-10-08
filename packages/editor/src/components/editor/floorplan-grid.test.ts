@@ -3,6 +3,7 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  GRID_SHAPE_RENDERING,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
   isGridAligned,
@@ -100,6 +101,17 @@ describe('floorplan grid path', () => {
   test('returns nothing for a degenerate step', () => {
     expect(buildGridPath(-1, 1, -1, 1, 0)).toBe('')
     expect(buildGridPath(-1, 1, -1, 1, Number.NaN)).toBe('')
+  })
+})
+
+describe('floorplan grid rasterization', () => {
+  test('never asks for crispEdges, at any rotation', () => {
+    // `crispEdges` snaps each line onto the pixel grid, which only helps a grid
+    // that is both axis-aligned and still. Moving, every line jumps a whole
+    // pixel independently on each sub-pixel view-box change: diagonals
+    // re-stair-step, axis-aligned lines jitter. Being axis-aligned is not the
+    // exemption it looks like.
+    expect(GRID_SHAPE_RENDERING).toBe('geometricPrecision')
   })
 })
 

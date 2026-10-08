@@ -203,6 +203,7 @@ import {
   buildGridPath,
   expandGridBounds,
   GRID_MARGIN_STEPS,
+  GRID_SHAPE_RENDERING,
   getRotatedViewBoxBounds,
   getVisibleGridSteps,
 } from './floorplan-grid'
@@ -3189,7 +3190,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={minorGridPath}
         fill="none"
         opacity={palette.minorGridOpacity}
-        shapeRendering="crispEdges"
+        shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.minorGrid}
         strokeWidth={FLOORPLAN_MINOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
@@ -3199,7 +3200,7 @@ const FloorplanGridLayer = memo(function FloorplanGridLayer({
         d={majorGridPath}
         fill="none"
         opacity={palette.majorGridOpacity}
-        shapeRendering="crispEdges"
+        shapeRendering={GRID_SHAPE_RENDERING}
         stroke={palette.majorGrid}
         strokeWidth={FLOORPLAN_MAJOR_GRID_STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"

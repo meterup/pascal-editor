@@ -42,6 +42,18 @@ export const GRID_MARGIN_STEPS = 48
 export type GridBounds = { minX: number; maxX: number; minY: number; maxY: number }
 export type GridViewBox = { minX: number; minY: number; width: number; height: number }
 
+/**
+ * How to rasterize the grid.
+ *
+ * Never `crispEdges`, which the grid used to ask for. It turns off
+ * anti-aliasing and snaps each line onto the pixel grid, which is only a win
+ * for a grid that is both axis-aligned and still. Move it and every line jumps
+ * a whole pixel, each one independently, on every sub-pixel change to the view
+ * box: diagonal lines re-stair-step (a shimmer), axis-aligned ones jitter. The
+ * grid is a moving reference, so the sharpness isn't worth either.
+ */
+export const GRID_SHAPE_RENDERING = 'geometricPrecision'
+
 /** Grow bounds outward by `margin` plan units on every side. */
 export function expandGridBounds(bounds: GridBounds, margin: number): GridBounds {
   if (!(Number.isFinite(margin) && margin > 0)) {
