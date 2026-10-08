@@ -29,6 +29,16 @@ import { extname, join } from "node:path";
 // publishes them to the `snapshot` dist-tag (leaving `latest` untouched), and
 // skips git tags / GitHub Releases. It dirties the working tree (version bumps +
 // consumed changesets) — discard with `git checkout .` afterward; CI is ephemeral.
+// A clean tree is required up front so that discard is unambiguous.
+
+/** Whether changesets is holding a prerelease line (`changeset pre enter`). */
+const inPreMode = (): boolean => {
+  try {
+    return JSON.parse(readFileSync(join(".changeset", "pre.json"), "utf8")).mode === "pre";
+  } catch {
+    return false;
+  }
+};
 
 const SOURCE_PREFIX = "@pascal-app/";
 const SCOPE = process.env.PUBLISH_SCOPE ?? "@meterup";
@@ -41,7 +51,10 @@ const IN_CI = process.env.GITHUB_ACTIONS === "true";
 // to the `snapshot` dist-tag instead of `latest` (see changesets snapshot releases).
 const SNAPSHOT = process.argv.includes("--snapshot");
 const SNAPSHOT_TAG = "snapshot"; // both the changesets snapshot id and the dist-tag
-const DIST_TAG = SNAPSHOT ? SNAPSHOT_TAG : "latest";
+// A prerelease must not take `latest`, or `npm install` resolves to it by
+// default. The fork's stable line is 0.9.x and the beta line is 1.0.0-beta.N,
+// so while pre mode holds, published betas go to the `beta` dist-tag instead.
+const DIST_TAG = SNAPSHOT ? SNAPSHOT_TAG : inPreMode() ? "beta" : "latest";
 // "owner/repo" of the publishing fork in CI; used to link packages to this repo.
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 
@@ -112,15 +125,6 @@ const relinkRepository = (packageDir: string, repo: string, directory: string): 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
-/** Whether changesets is holding a prerelease line (`changeset pre enter`). */
-const inPreMode = (): boolean => {
-  try {
-    return JSON.parse(readFileSync(join(".changeset", "pre.json"), "utf8")).mode === "pre";
-  } catch {
-    return false;
-  }
-};
-
 // Snapshot mode mints throwaway versions from the pending changesets. Only
 // packages with a changeset (+ their dependents) get a snapshot version; the
 // rest keep their released version and are skipped below as already-published.
@@ -130,7 +134,15 @@ const inPreMode = (): boolean => {
 // permanently to hold the 1.x-beta line. Exiting is safe here and only here: the
 // tree is already throwaway (see the header), so the flipped pre.json dies with
 // it instead of ending the prerelease for real.
+//
+// Both of those edits are meant to be discarded, which only works if nothing
+// else in the tree is pending: otherwise `git checkout .` cannot tell the
+// script's scribbles from real work, and committing instead buries snapshot
+// versions and a `"mode": "exit"` pre.json in history.
 if (SNAPSHOT && !DRY_RUN) {
+  if ((await $`git diff --quiet HEAD`.nothrow()).exitCode !== 0) {
+    throw new Error("--snapshot needs a clean working tree; commit or stash first");
+  }
   if (inPreMode()) await $`bunx changeset pre exit`;
   await $`bunx changeset version --snapshot ${SNAPSHOT_TAG}`;
   await $`bun install`;
