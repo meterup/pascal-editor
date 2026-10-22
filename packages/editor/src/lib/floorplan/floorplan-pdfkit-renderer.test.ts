@@ -105,3 +105,30 @@ async function renderTestPdf(geometry: FloorplanGeometry, rotationDeg = 0): Prom
   raw.end()
   return completed
 }
+
+describe('transparent paint', () => {
+  const square = (fill: string, stroke: string) =>
+    ({
+      kind: 'polygon',
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+      fill,
+      stroke,
+    }) satisfies FloorplanGeometry
+
+  test('leaves transparent hit targets unpainted instead of filling them black', async () => {
+    const pdf = await renderTestPdf(square('transparent', 'transparent'))
+
+    expect(pdf).not.toMatch(/^(f|S|B)$/m)
+  })
+
+  test('still paints opaque fills', async () => {
+    const pdf = await renderTestPdf(square('#ff0000', 'none'))
+
+    expect(pdf).toMatch(/^f$/m)
+  })
+})

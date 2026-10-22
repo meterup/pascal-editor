@@ -181,13 +181,19 @@ async function renderGeometry(
   }
 }
 
+// Hit targets are drawn with `transparent`, which SVG treats as no paint but
+// pdfkit doesn't recognize and paints black.
+function isPaint(color: string | undefined): color is string {
+  return !!color && color !== 'none' && color !== 'transparent'
+}
+
 function paintStyledGeometry(
   raw: FloorplanPdfDocument['raw'],
   geometry: StyledGeometry,
   context: RenderContext,
 ): void {
-  const fill = geometry.fill && geometry.fill !== 'none' ? geometry.fill : null
-  const stroke = geometry.stroke && geometry.stroke !== 'none' ? geometry.stroke : null
+  const fill = isPaint(geometry.fill) ? geometry.fill : null
+  const stroke = isPaint(geometry.stroke) ? geometry.stroke : null
   const opacity = geometry.opacity ?? 1
   const fillOpacity = (geometry.fillOpacity ?? 1) * opacity
   const strokeOpacity = (geometry.strokeOpacity ?? 1) * opacity
@@ -623,9 +629,8 @@ async function drawImage(
   try {
     const url = await loadAssetUrl(geometry.url)
     if (!url) return
-    const response = await fetch(url)
-    if (!response.ok) return
-    const dataUrl = await blobToDataUrl(await response.blob())
+    const dataUrl = await resolvePdfImageDataUrl(url)
+    if (!dataUrl) return
     const raw = doc.raw
     raw.save().translate(geometry.center[0], geometry.center[1])
     if (geometry.rotation) raw.rotate((geometry.rotation * 180) / Math.PI)
@@ -643,6 +648,49 @@ async function drawImage(
   } catch {
     return
   }
+}
+
+/** Longest side, in px, that SVG images are rasterized to before embedding. */
+const SVG_RASTER_SIZE_PX = 512
+
+/**
+ * An image URL as a data URL pdfkit can embed, which means PNG or JPEG. SVG is
+ * rasterized first.
+ */
+async function resolvePdfImageDataUrl(url: string): Promise<string | null> {
+  // A `data:` URL is already the payload. Fetching it would be redundant, and a
+  // CSP `connect-src` without `data:` refuses the request outright.
+  let dataUrl = url
+  if (!url.startsWith('data:')) {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    dataUrl = await blobToDataUrl(await response.blob())
+  }
+  return dataUrl.startsWith('data:image/svg+xml') ? rasterizeSvg(dataUrl) : dataUrl
+}
+
+function rasterizeSvg(dataUrl: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const image = new Image()
+    image.onerror = () => resolve(null)
+    image.onload = () => {
+      // An SVG with only a `viewBox` has no intrinsic size in some browsers.
+      const width = image.naturalWidth || SVG_RASTER_SIZE_PX
+      const height = image.naturalHeight || SVG_RASTER_SIZE_PX
+      const scale = SVG_RASTER_SIZE_PX / Math.max(width, height)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(width * scale))
+      canvas.height = Math.max(1, Math.round(height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) {
+        resolve(null)
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.src = dataUrl
+  })
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
