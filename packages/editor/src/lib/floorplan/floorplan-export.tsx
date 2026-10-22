@@ -47,7 +47,11 @@ import {
   resolveFloorplanAnnotationVisibility,
   resolveFloorplanWallDimensionReference,
 } from './floorplan-mode'
-import { createFloorplanPdfDocument, type FloorplanPdfDocument } from './floorplan-pdfkit-document'
+import {
+  createFloorplanPdfDocument,
+  downloadBlob,
+  type FloorplanPdfDocument,
+} from './floorplan-pdfkit-document'
 import { renderFloorplanGeometryToPdfKit } from './floorplan-pdfkit-renderer'
 import { FLOORPLAN_VIEW_ROTATION_DEG } from './geometry'
 
@@ -136,7 +140,36 @@ export type FloorplanPageLayout = {
   planBox: { x: number; y: number; width: number; height: number }
 }
 
-export async function exportFloorplanPdf(scope: FloorplanExportScope): Promise<void> {
+export type FloorplanPdfOptions = {
+  /**
+   * Which nodes to draw.
+   *
+   * @default 'full'
+   */
+  scope?: FloorplanExportScope
+  /**
+   * Levels to include, in any order. Pages always run bottom-to-top. Defaults
+   * to every level of the active building.
+   */
+  levelIds?: readonly string[]
+}
+
+export type FloorplanPdf = {
+  blob: Blob
+  /** Suggested download name, e.g. `floor-plan_full_2026-10-22.pdf`. */
+  filename: string
+  pageCount: number
+}
+
+/**
+ * Renders the floor plan as a multi-page PDF without downloading it. Reads the
+ * live scene, units, drawing type and annotation settings, so call it while an
+ * editor is mounted. Resolves to `null` when there is nothing to draw.
+ */
+export async function renderFloorplanPdf({
+  scope = 'full',
+  levelIds,
+}: FloorplanPdfOptions = {}): Promise<FloorplanPdf | null> {
   const nodes = useScene.getState().nodes
   const viewer = useViewer.getState()
   const unit = viewer.unit
@@ -156,13 +189,13 @@ export async function exportFloorplanPdf(scope: FloorplanExportScope): Promise<v
   const annotationLayoutOverrides = useDrawingView.getState().annotationLayoutOverrides
   const drawingLabel =
     DRAWING_TYPE_OPTIONS.find((option) => option.id === drawingType)?.label ?? 'Floor plan'
-  const levels = resolveExportLevels(nodes)
+  const levels = resolveExportLevels(nodes, levelIds)
   if (levels.length === 0) {
     console.warn('[floorplan-export] no level to export')
-    return
+    return null
   }
 
-  const { doc, save } = await createFloorplanPdfDocument([
+  const { doc, toBlob } = await createFloorplanPdfDocument([
     A4_LANDSCAPE_WIDTH_PT,
     A4_LANDSCAPE_HEIGHT_PT,
   ])
@@ -257,14 +290,22 @@ export async function exportFloorplanPdf(scope: FloorplanExportScope): Promise<v
 
     if (pageCount === 0) {
       console.warn(`[floorplan-export] nothing to export for scope "${scope}"`)
-      return
+      return null
     }
 
     const date = new Date().toISOString().split('T')[0]
-    await save(`${drawingType}_${scope}_${date}.pdf`)
+    return { blob: await toBlob(), filename: `${drawingType}_${scope}_${date}.pdf`, pageCount }
   } finally {
     host.remove()
   }
+}
+
+/**
+ * Renders the floor plan with {@link renderFloorplanPdf} and downloads it.
+ */
+export async function exportFloorplanPdf(scope: FloorplanExportScope): Promise<void> {
+  const pdf = await renderFloorplanPdf({ scope })
+  if (pdf) downloadBlob(pdf.blob, pdf.filename)
 }
 
 export function collectFloorplanSchedules(
@@ -924,12 +965,23 @@ function combineGeometryList(
 }
 
 /**
- * Levels to export, ordered bottom-to-top. The active building (the building
- * owning the selected level, or the first one found) contributes all of its
- * level children; if there is no building wrapper we fall back to the single
- * resolved level.
+ * Levels to export, ordered bottom-to-top. Explicit `levelIds` win. Otherwise
+ * the active building (the building owning the selected level, or the first
+ * one found) contributes all of its level children; if there is no building
+ * wrapper we fall back to the single resolved level.
  */
-function resolveExportLevels(nodes: Record<string, AnyNode>): ExportLevel[] {
+function resolveExportLevels(
+  nodes: Record<string, AnyNode>,
+  levelIds?: readonly string[],
+): ExportLevel[] {
+  if (levelIds) {
+    return levelIds
+      .map((id) => nodes[id])
+      .filter((n): n is AnyNode => n?.type === 'level')
+      .sort((a, b) => levelIndexOf(a) - levelIndexOf(b))
+      .map((n) => ({ id: n.id as AnyNodeId, label: levelLabelOf(n) }))
+  }
+
   const selected = useViewer.getState().selection.levelId as AnyNodeId | null | undefined
   const activeLevelId = selected && nodes[selected] ? selected : firstLevelId(nodes)
   if (!activeLevelId) return []

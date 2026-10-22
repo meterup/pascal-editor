@@ -168,27 +168,32 @@ export class FloorplanPdfDocument {
 }
 
 export async function createFloorplanPdfDocument(defaultPageSize: readonly [number, number]) {
-  const [{ default: PDFDocument }, { default: blobStream }] = await Promise.all([
-    import('pdfkit/js/pdfkit.standalone'),
-    import('blob-stream'),
-  ])
+  const { default: PDFDocument } = await import('pdfkit/js/pdfkit.standalone')
   const raw = new PDFDocument({ autoFirstPage: false, compress: true, margin: 0 })
-  const stream = raw.pipe(blobStream())
+  // Collect the document's own readable stream rather than piping it into
+  // `blob-stream`. That module calls `util.inherits(…, stream.Writable)` at
+  // import time, so it needs Node `stream`/`util` shims that bundlers other
+  // than Next don't provide. The standalone pdfkit build carries its own.
+  const chunks: Uint8Array[] = []
+  const finished = new Promise<Blob>((resolve, reject) => {
+    raw.on('data', (chunk: Uint8Array) => chunks.push(chunk))
+    raw.on('end', () => resolve(new Blob(chunks as BlobPart[], { type: 'application/pdf' })))
+    raw.on('error', reject)
+  })
   return {
     doc: new FloorplanPdfDocument(raw, defaultPageSize),
-    save: async (filename: string) => {
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        stream.on('finish', () => resolve(stream.toBlob('application/pdf')))
-        stream.on('error', reject)
-        raw.on('error', reject)
-        raw.end()
-      })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = filename
-      anchor.click()
-      setTimeout(() => URL.revokeObjectURL(url), 0)
+    toBlob: (): Promise<Blob> => {
+      raw.end()
+      return finished
     },
   }
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

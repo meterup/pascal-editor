@@ -414,6 +414,13 @@ export type {
   FloorplanAnnotationVisibility,
 } from './lib/floorplan/annotation-visibility'
 export {
+  exportFloorplanPdf,
+  type FloorplanExportScope,
+  type FloorplanPdf,
+  type FloorplanPdfOptions,
+  renderFloorplanPdf,
+} from './lib/floorplan/floorplan-export'
+export {
   createFloorplanContextExtensions,
   FLOORPLAN_CONTEXT_EXTENSION_KEY,
   FLOORPLAN_GEOMETRY_METADATA_KEY,
